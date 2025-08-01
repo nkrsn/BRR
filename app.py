@@ -750,10 +750,7 @@ print("• Customizable chapters per day")
 print("• Reflection questions included")
 print("• Works with any RSS reader")
 
-# Start the server (Railway needs to use PORT env var)
-port = int(os.environ.get('PORT', 5000))
-app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
-```
-
-if **name** == "**main**":
-run_bible_rss_server()
+if __name__ == "__main__":
+    port = int(os.environ.get('PORT', 5000))
+    print(f"🚀 Starting Bible RSS server on port {port}")
+    app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
