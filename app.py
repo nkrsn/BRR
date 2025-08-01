@@ -26,10 +26,10 @@ class BibleTextProvider:
 def **init**(self):
 self.cache = {}
 self.base_urls = {
-‘web’: ‘https://ebible.org/web/’,  # World English Bible
-‘asv’: ‘https://ebible.org/asv/’,  # American Standard Version
+'web': 'https://ebible.org/web/',  # World English Bible
+'asv': 'https://ebible.org/asv/',  # American Standard Version
 }
-self.version = ‘web’  # Default to World English Bible (public domain)
+self.version = 'web'  # Default to World English Bible (public domain)
 
 ```
 def get_book_filename(self, book_name):
@@ -252,7 +252,7 @@ def get_fallback_text(self, book, chapter):
 • YouVersion: https://www.bible.com/search/bible?q={quote(book)}%20{chapter}
 • Blue Letter Bible: https://www.blueletterbible.org/search/search.cfm?Criteria={quote(book)}+{chapter}
 
-Today’s Reading: {book} {chapter}
+Today's Reading: {book} {chapter}
 
 💡 Reading Tips:
 • Read slowly and thoughtfully
@@ -298,28 +298,28 @@ class BibleRSSGenerator:
 def **init**(self):
 self.text_provider = BibleTextProvider()
 self.bible_books = {
-‘ot’: [
-(‘Genesis’, 50), (‘Exodus’, 40), (‘Leviticus’, 27), (‘Numbers’, 36),
-(‘Deuteronomy’, 34), (‘Joshua’, 24), (‘Judges’, 21), (‘Ruth’, 4),
-(‘1 Samuel’, 31), (‘2 Samuel’, 24), (‘1 Kings’, 22), (‘2 Kings’, 25),
-(‘1 Chronicles’, 29), (‘2 Chronicles’, 36), (‘Ezra’, 10), (‘Nehemiah’, 13),
-(‘Esther’, 10), (‘Job’, 42), (‘Ecclesiastes’, 12), (‘Song of Solomon’, 8),
-(‘Isaiah’, 66), (‘Jeremiah’, 52), (‘Lamentations’, 5), (‘Ezekiel’, 48),
-(‘Daniel’, 12), (‘Hosea’, 14), (‘Joel’, 3), (‘Amos’, 9), (‘Obadiah’, 1),
-(‘Jonah’, 4), (‘Micah’, 7), (‘Nahum’, 3), (‘Habakkuk’, 3), (‘Zephaniah’, 3),
-(‘Haggai’, 2), (‘Zechariah’, 14), (‘Malachi’, 4)
+'ot': [
+('Genesis', 50), ('Exodus', 40), ('Leviticus', 27), ('Numbers', 36),
+('Deuteronomy', 34), ('Joshua', 24), ('Judges', 21), ('Ruth', 4),
+('1 Samuel', 31), ('2 Samuel', 24), ('1 Kings', 22), ('2 Kings', 25),
+('1 Chronicles', 29), ('2 Chronicles', 36), ('Ezra', 10), ('Nehemiah', 13),
+('Esther', 10), ('Job', 42), ('Ecclesiastes', 12), ('Song of Solomon', 8),
+('Isaiah', 66), ('Jeremiah', 52), ('Lamentations', 5), ('Ezekiel', 48),
+('Daniel', 12), ('Hosea', 14), ('Joel', 3), ('Amos', 9), ('Obadiah', 1),
+('Jonah', 4), ('Micah', 7), ('Nahum', 3), ('Habakkuk', 3), ('Zephaniah', 3),
+('Haggai', 2), ('Zechariah', 14), ('Malachi', 4)
 ],
-‘nt’: [
-(‘Matthew’, 28), (‘Mark’, 16), (‘Luke’, 24), (‘John’, 21),
-(‘Acts’, 28), (‘Romans’, 16), (‘1 Corinthians’, 16), (‘2 Corinthians’, 13),
-(‘Galatians’, 6), (‘Ephesians’, 6), (‘Philippians’, 4), (‘Colossians’, 4),
-(‘1 Thessalonians’, 5), (‘2 Thessalonians’, 3), (‘1 Timothy’, 6),
-(‘2 Timothy’, 4), (‘Titus’, 3), (‘Philemon’, 1), (‘Hebrews’, 13),
-(‘James’, 5), (‘1 Peter’, 5), (‘2 Peter’, 3), (‘1 John’, 5),
-(‘2 John’, 1), (‘3 John’, 1), (‘Jude’, 1), (‘Revelation’, 22)
+'nt': [
+('Matthew', 28), ('Mark', 16), ('Luke', 24), ('John', 21),
+('Acts', 28), ('Romans', 16), ('1 Corinthians', 16), ('2 Corinthians', 13),
+('Galatians', 6), ('Ephesians', 6), ('Philippians', 4), ('Colossians', 4),
+('1 Thessalonians', 5), ('2 Thessalonians', 3), ('1 Timothy', 6),
+('2 Timothy', 4), ('Titus', 3), ('Philemon', 1), ('Hebrews', 13),
+('James', 5), ('1 Peter', 5), ('2 Peter', 3), ('1 John', 5),
+('2 John', 1), ('3 John', 1), ('Jude', 1), ('Revelation', 22)
 ],
-‘psalms’: [(‘Psalms’, 150)],
-‘proverbs’: [(‘Proverbs’, 31)]
+'psalms': [('Psalms', 150)],
+'proverbs': [('Proverbs', 31)]
 }
 
 ```
@@ -650,16 +650,16 @@ HTML_TEMPLATE = """
 </html>
 """
 
-@app.route(’/’)
+@app.route('/')
 def index():
-today = datetime.now().strftime(’%Y-%m-%d’)
-feed_url = request.args.get(‘feed_url’)
+today = datetime.now().strftime('%Y-%m-%d')
+feed_url = request.args.get('feed_url')
 return render_template_string(HTML_TEMPLATE, today=today, feed_url=feed_url)
 
-@app.route(’/generate’)
+@app.route('/generate')
 def generate_feed():
-plan = request.args.get(‘plan’, ‘nt’)
-start_date = request.args.get(‘start_date’, datetime.now().strftime(’%Y-%m-%d’))
+plan = request.args.get('plan', 'nt')
+start_date = request.args.get('start_date', datetime.now().strftime('%Y-%m-%d'))
 
 ```
 if plan == 'mixed':
@@ -678,21 +678,21 @@ today = datetime.now().strftime('%Y-%m-%d')
 return render_template_string(HTML_TEMPLATE, today=today, feed_url=feed_url)
 ```
 
-@app.route(’/feed/<plan>/<start_date>/<int:chapters>/feed.rss’)
+@app.route('/feed/<plan>/<start_date>/<int:chapters>/feed.rss')
 def serve_feed(plan, start_date, chapters):
 try:
 print(f"Generating feed: {plan}, {start_date}, {chapters} chapters/day")
 feed_content = generator.generate_rss_feed(plan, start_date, chapters_per_day=chapters)
-return Response(feed_content, mimetype=‘application/rss+xml’)
+return Response(feed_content, mimetype='application/rss+xml')
 except Exception as e:
 print(f"Error: {e}")
 return f"Error generating feed: {str(e)}", 400
 
-@app.route(’/feed/mixed/<start_date>/<path:mixed_params>/feed.rss’)
+@app.route('/feed/mixed/<start_date>/<path:mixed_params>/feed.rss')
 def serve_mixed_feed(start_date, mixed_params):
 try:
 # Parse mixed parameters: ot-nt-psalms-proverbs
-params = mixed_params.split(’-’)
+params = mixed_params.split('-')
 if len(params) != 4:
 return "Invalid mixed plan parameters", 400
 
@@ -750,7 +750,10 @@ print("• Customizable chapters per day")
 print("• Reflection questions included")
 print("• Works with any RSS reader")
 
-if __name__ == "__main__":
-    port = int(os.environ.get('PORT', 5000))
-    print(f"🚀 Starting Bible RSS server on port {port}")
-    app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
+# Start the server (Railway needs to use PORT env var)
+port = int(os.environ.get('PORT', 5000))
+app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
+```
+
+if **name** == "**main**":
+run_bible_rss_server()
