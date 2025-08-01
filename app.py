@@ -239,7 +239,7 @@ def fetch_chapter_text_web(self, book, chapter):
     return None
 
 def get_fallback_text(self, book, chapter):
-    """Generate fallback content when text can't be fetched"""
+    """Generate fallback content when text cannot be fetched"""
     return f"""
 ```
 
