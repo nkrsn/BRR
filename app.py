@@ -37,7 +37,7 @@ class BibleTextProvider:
             'Genesis': 'GEN', 'Exodus': 'EXO', 'Leviticus': 'LEV', 'Numbers': 'NUM',
             'Deuteronomy': 'DEU', 'Joshua': 'JOS', 'Judges': 'JDG', 'Ruth': 'RUT',
             '1 Samuel': '1SA', '2 Samuel': '2SA', '1 Kings': '1KI', '2 Kings': '2KI',
-            '1 Chronicles': '1CH', '2 Chronicles': '2CH', 'Ezra': 'EZR', 'Nehemiah': 'NEH',
+            '1 Chronicles': '1CH', '2 Chronicles': '36', 'Ezra': 'EZR', 'Nehemiah': 'NEH',
             'Esther': 'EST', 'Job': 'JOB', 'Psalms': 'PSA', 'Proverbs': 'PRO',
             'Ecclesiastes': 'ECC', 'Song of Solomon': 'SNG', 'Isaiah': 'ISA',
             'Jeremiah': 'JER', 'Lamentations': 'LAM', 'Ezekiel': 'EZK', 'Daniel': 'DAN',
@@ -75,7 +75,7 @@ class BibleTextProvider:
                         verses.append(f"{verse_num}. {verse_text}")
                     return "\n".join(verses)
         except:
-            pass
+            pass # Ignore API errors and try next method
         return None
 
     def fetch_chapter_text_web(self, book, chapter):
@@ -122,25 +122,27 @@ class BibleTextProvider:
     def get_fallback_text(self, book, chapter):
         """Generate fallback content when text can't be fetched"""
         return f"""
-{book} Chapter {chapter}
-
+<p>
+<b>{book} Chapter {chapter}</b>
+</p>
+<p>
 [Bible text temporarily unavailable - please read from your preferred Bible]
-
-📖 Read online at:
-• Bible Gateway: https://www.biblegateway.com/passage/?search={quote(book)}+{chapter}&version=ESV
-• YouVersion: https://www.bible.com/search/bible?q={quote(book)}%20{chapter}
-• Blue Letter Bible: https://www.blueletterbible.org/search/search.cfm?Criteria={quote(book)}+{chapter}
-
-Today’s Reading: {book} {chapter}
-
-💡 Reading Tips:
-• Read slowly and thoughtfully
-• Look for key themes and applications
-• Consider the historical context
-• Pray for understanding and application
-
-🙏 Prayer: “Lord, speak to me through Your Word today. Help me understand what You want to teach me through this passage. Amen.”
+</p>
+<p>
+📖 Read online at:<br/>
+• Bible Gateway: <a href="https://www.biblegateway.com/passage/?search={quote(book)}+{chapter}&version=ESV">https://www.biblegateway.com/passage/?search={quote(book)}+{chapter}&version=ESV</a><br/>
+• YouVersion: <a href="https://www.bible.com/search/bible?q={quote(book)}%20{chapter}">https://www.bible.com/search/bible?q={quote(book)}%20{chapter}</a><br/>
+• Blue Letter Bible: <a href="https://www.blueletterbible.org/search/search.cfm?Criteria={quote(book)}+{chapter}">https://www.blueletterbible.org/search/search.cfm?Criteria={quote(book)}+{chapter}</a>
+</p>
+<p>Today’s Reading: {book} {chapter}</p>
+<p>💡 Reading Tips:<br/>
+• Read slowly and thoughtfully<br/>
+• Look for key themes and applications<br/>
+• Consider the historical context<br/>
+• Pray for understanding and application</p>
+<p>🙏 Prayer: “Lord, speak to me through Your Word today. Help me understand what You want to teach me through this passage. Amen.”</p>
 """.strip()
+
 
     def get_chapter_text(self, book, chapter):
         """Get the full text of a Bible chapter"""
@@ -171,6 +173,7 @@ Today’s Reading: {book} {chapter}
 
         return text
 
+
 class BibleRSSGenerator:
     def __init__(self):
         self.text_provider = BibleTextProvider()
@@ -197,6 +200,7 @@ class BibleRSSGenerator:
                 ('2 John', 1), ('3 John', 1), ('Jude', 1), ('Revelation', 22)
             ]
         }
+
 
     def get_bible_plan(self, plan_type):
         if plan_type == 'ot':
@@ -286,6 +290,7 @@ class BibleRSSGenerator:
 </div>
                 """.strip())
 
+
             # Add reflection section
             content_parts.append(f"""
 <div style="background-color: #f8f9fa; padding: 15px; border-left: 4px solid #3498db; margin-top: 20px;">
@@ -322,12 +327,14 @@ class BibleRSSGenerator:
             pub_datetime = current_date.replace(hour=6, minute=0, second=0, microsecond=0)
             item_pub_date.text = pub_datetime.strftime('%a, %d %b %Y %H:%M:%S +0000')
 
+
             current_date += timedelta(days=1)
 
         # Convert to pretty XML
         rough_string = tostring(rss, 'utf-8')
         reparsed = minidom.parseString(rough_string)
         return reparsed.toprettyxml(indent="  ", encoding='utf-8').decode('utf-8')
+
 
 # Initialize generator
 generator = BibleRSSGenerator()
@@ -433,8 +440,10 @@ def generate_feed():
     chapters = int(request.args.get('chapters', 1))
     start_date = request.args.get('start_date', datetime.now().strftime('%Y-%m-%d'))
 
+
     feed_url = f"{request.host_url}feed/{plan}/{start_date}/{chapters}/feed.rss"
     return index() + f"<script>window.history.replaceState(null, null, '/?feed_url={feed_url}');</script>"
+
 
 @app.route('/feed/<plan>/<start_date>/<int:chapters>/feed.rss')
 def serve_feed(plan, start_date, chapters):
@@ -478,8 +487,9 @@ def run_bible_rss_server():
     print("• Reflection questions included")
     print("• Works with any RSS reader")
 
-    # Start the server
-    app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
+    # Start the server (Railway needs to use PORT env var)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
 
 if __name__ == "__main__":
     run_bible_rss_server()
