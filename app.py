@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Bible RSS Feed Generator with Full Text
 Includes actual Bible text in RSS feed using World English Bible (public domain)
@@ -37,7 +38,7 @@ class BibleTextProvider:
             'Genesis': 'GEN', 'Exodus': 'EXO', 'Leviticus': 'LEV', 'Numbers': 'NUM',
             'Deuteronomy': 'DEU', 'Joshua': 'JOS', 'Judges': 'JDG', 'Ruth': 'RUT',
             '1 Samuel': '1SA', '2 Samuel': '2SA', '1 Kings': '1KI', '2 Kings': '2KI',
-            '1 Chronicles': '1CH', '2 Chronicles': '36', 'Ezra': 'EZR', 'Nehemiah': 'NEH',
+            '1 Chronicles': '1CH', '2 Chronicles': '2CH', 'Ezra': 'EZR', 'Nehemiah': 'NEH',
             'Esther': 'EST', 'Job': 'JOB', 'Psalms': 'PSA', 'Proverbs': 'PRO',
             'Ecclesiastes': 'ECC', 'Song of Solomon': 'SNG', 'Isaiah': 'ISA',
             'Jeremiah': 'JER', 'Lamentations': 'LAM', 'Ezekiel': 'EZK', 'Daniel': 'DAN',
@@ -75,8 +76,8 @@ class BibleTextProvider:
                         verses.append(f"{verse_num}. {verse_text}")
                     return "\n".join(verses)
         except:
-            pass # Ignore API errors and try next method
-        return None
+            pass
+        return
 
     def fetch_chapter_text_web(self, book, chapter):
         """Fetch chapter text from web sources"""
@@ -122,25 +123,24 @@ class BibleTextProvider:
     def get_fallback_text(self, book, chapter):
         """Generate fallback content when text can't be fetched"""
         return f"""
-<p>
-<b>{book} Chapter {chapter}</b>
-</p>
-<p>
+{book} Chapter {chapter}
+
 [Bible text temporarily unavailable - please read from your preferred Bible]
-</p>
-<p>
-📖 Read online at:<br/>
-• Bible Gateway: <a href="https://www.biblegateway.com/passage/?search={quote(book)}+{chapter}&version=ESV">https://www.biblegateway.com/passage/?search={quote(book)}+{chapter}&version=ESV</a><br/>
-• YouVersion: <a href="https://www.bible.com/search/bible?q={quote(book)}%20{chapter}">https://www.bible.com/search/bible?q={quote(book)}%20{chapter}</a><br/>
-• Blue Letter Bible: <a href="https://www.blueletterbible.org/search/search.cfm?Criteria={quote(book)}+{chapter}">https://www.blueletterbible.org/search/search.cfm?Criteria={quote(book)}+{chapter}</a>
-</p>
-<p>Today’s Reading: {book} {chapter}</p>
-<p>💡 Reading Tips:<br/>
-• Read slowly and thoughtfully<br/>
-• Look for key themes and applications<br/>
-• Consider the historical context<br/>
-• Pray for understanding and application</p>
-<p>🙏 Prayer: “Lord, speak to me through Your Word today. Help me understand what You want to teach me through this passage. Amen.”</p>
+
+Read online at:
+• Bible Gateway: https://www.biblegateway.com/passage/?search={quote(book)}+{chapter}&version=ESV
+• YouVersion: https://www.bible.com/search/bible?q={quote(book)}%20{chapter}
+• Blue Letter Bible: https://www.blueletterbible.org/search/search.cfm?Criteria={quote(book)}+{chapter}
+
+Today’s Reading: {book} {chapter}
+
+Reading Tips:
+• Read slowly and thoughtfully
+• Look for key themes and applications
+• Consider the historical context
+• Pray for understanding and application
+
+Prayer: "Lord, speak to me through Your Word today. Help me understand what You want to teach me through this passage. Amen."
 """.strip()
 
 
@@ -173,7 +173,6 @@ class BibleTextProvider:
 
         return text
 
-
 class BibleRSSGenerator:
     def __init__(self):
         self.text_provider = BibleTextProvider()
@@ -183,11 +182,10 @@ class BibleRSSGenerator:
                 ('Deuteronomy', 34), ('Joshua', 24), ('Judges', 21), ('Ruth', 4),
                 ('1 Samuel', 31), ('2 Samuel', 24), ('1 Kings', 22), ('2 Kings', 25),
                 ('1 Chronicles', 29), ('2 Chronicles', 36), ('Ezra', 10), ('Nehemiah', 13),
-                ('Esther', 10), ('Job', 42), ('Psalms', 150), ('Proverbs', 31),
-                ('Ecclesiastes', 12), ('Song of Solomon', 8), ('Isaiah', 66),
-                ('Jeremiah', 52), ('Lamentations', 5), ('Ezekiel', 48), ('Daniel', 12),
-                ('Hosea', 14), ('Joel', 3), ('Amos', 9), ('Obadiah', 1), ('Jonah', 4),
-                ('Micah', 7), ('Nahum', 3), ('Habakkuk', 3), ('Zephaniah', 3),
+                ('Esther', 10), ('Job', 42), ('Ecclesiastes', 12), ('Song of Solomon', 8),
+                ('Isaiah', 66), ('Jeremiah', 52), ('Lamentations', 5), ('Ezekiel', 48),
+                ('Daniel', 12), ('Hosea', 14), ('Joel', 3), ('Amos', 9), ('Obadiah', 1),
+                ('Jonah', 4), ('Micah', 7), ('Nahum', 3), ('Habakkuk', 3), ('Zephaniah', 3),
                 ('Haggai', 2), ('Zechariah', 14), ('Malachi', 4)
             ],
             'nt': [
@@ -198,9 +196,10 @@ class BibleRSSGenerator:
                 ('2 Timothy', 4), ('Titus', 3), ('Philemon', 1), ('Hebrews', 13),
                 ('James', 5), ('1 Peter', 5), ('2 Peter', 3), ('1 John', 5),
                 ('2 John', 1), ('3 John', 1), ('Jude', 1), ('Revelation', 22)
-            ]
+            ],
+            'psalms': [('Psalms', 150)],
+            'proverbs': [('Proverbs', 31)]
         }
-
 
     def get_bible_plan(self, plan_type):
         if plan_type == 'ot':
@@ -209,8 +208,62 @@ class BibleRSSGenerator:
             return self.bible_books['nt']
         elif plan_type == 'full':
             return self.bible_books['ot'] + self.bible_books['nt']
+        elif plan_type == 'psalms':
+            return self.bible_books['psalms']
+        elif plan_type == 'proverbs':
+            return self.bible_books['proverbs']
         else:
-            raise ValueError("Plan type must be 'ot', 'nt', or 'full'")
+            raise ValueError("Plan type must be 'ot', 'nt', 'full', 'psalms', or 'proverbs'")
+
+    def get_mixed_plan_chapters(self, ot_per_day, nt_per_day, psalms_per_day, proverbs_per_day, start_date, target_date):
+        """Get chapters for mixed reading plan (OT + NT + Psalms + Proverbs)"""
+        days_elapsed = (target_date - start_date).days
+
+        chapters_today = []
+
+        # Old Testament chapters
+        if ot_per_day > 0:
+            ot_plan = self.bible_books['ot']
+            ot_chapters = []
+            for book_name, chapter_count in ot_plan:
+                for chapter_num in range(1, chapter_count + 1):
+                    ot_chapters.append((book_name, chapter_num))
+
+            ot_start = days_elapsed * ot_per_day
+            for i in range(ot_per_day):
+                chapter_idx = ot_start + i
+                if chapter_idx < len(ot_chapters):
+                    chapters_today.append(ot_chapters[chapter_idx])
+
+        # New Testament chapters
+        if nt_per_day > 0:
+            nt_plan = self.bible_books['nt']
+            nt_chapters = []
+            for book_name, chapter_count in nt_plan:
+                for chapter_num in range(1, chapter_count + 1):
+                    nt_chapters.append((book_name, chapter_num))
+
+            nt_start = days_elapsed * nt_per_day
+            for i in range(nt_per_day):
+                chapter_idx = nt_start + i
+                if chapter_idx < len(nt_chapters):
+                    chapters_today.append(nt_chapters[chapter_idx])
+
+        # Psalms (cycle through)
+        if psalms_per_day > 0:
+            psalms_start = days_elapsed * psalms_per_day
+            for i in range(psalms_per_day):
+                psalm_num = ((psalms_start + i) % 150) + 1  # Cycle through Psalms 1-150
+                chapters_today.append(('Psalms', psalm_num))
+
+        # Proverbs (cycle through)
+        if proverbs_per_day > 0:
+            proverbs_start = days_elapsed * proverbs_per_day
+            for i in range(proverbs_per_day):
+                proverb_num = ((proverbs_start + i) % 31) + 1  # Cycle through Proverbs 1-31
+                chapters_today.append(('Proverbs', proverb_num))
+
+        return chapters_today
 
     def get_chapter_for_day(self, plan_type, start_date, chapters_per_day, target_date):
         plan = self.get_bible_plan(plan_type)
@@ -230,7 +283,8 @@ class BibleRSSGenerator:
 
         return chapters_today
 
-    def generate_rss_feed(self, plan_type, start_date_str, chapters_per_day, days_to_generate=30):
+    def generate_rss_feed(self, plan_type, start_date_str, chapters_per_day=None, days_to_generate=30,
+                          ot_per_day=0, nt_per_day=0, psalms_per_day=0, proverbs_per_day=0):
         start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
 
         rss = Element('rss')
@@ -241,10 +295,26 @@ class BibleRSSGenerator:
         channel = SubElement(rss, 'channel')
 
         title = SubElement(channel, 'title')
-        title.text = f"Daily Bible Reading - {plan_type.upper()} ({chapters_per_day} ch/day)"
+        if plan_type == 'mixed':
+            parts = []
+            if ot_per_day > 0: parts.append(f"{ot_per_day} OT")
+            if nt_per_day > 0: parts.append(f"{nt_per_day} NT")
+            if psalms_per_day > 0: parts.append(f"{psalms_per_day} Ps")
+            if proverbs_per_day > 0: parts.append(f"{proverbs_per_day} Pr")
+            title.text = f"Daily Bible Reading - Mixed Plan ({', '.join(parts)})"
+        else:
+            title.text = f"Daily Bible Reading - {plan_type.upper()} ({chapters_per_day} ch/day)"
 
         description = SubElement(channel, 'description')
-        description.text = f"Complete Bible text for daily reading - {chapters_per_day} chapter{'s' if chapters_per_day > 1 else ''} per day"
+        if plan_type == 'mixed':
+            desc_parts = []
+            if ot_per_day > 0: desc_parts.append(f"{ot_per_day} Old Testament")
+            if nt_per_day > 0: desc_parts.append(f"{nt_per_day} New Testament")
+            if psalms_per_day > 0: desc_parts.append(f"{psalms_per_day} Psalm(s)")
+            if proverbs_per_day > 0: desc_parts.append(f"{proverbs_per_day} Proverb(s)")
+            description.text = f"Daily mixed Bible reading: {', '.join(desc_parts)} per day"
+        else:
+            description.text = f"Complete Bible text for daily reading - {chapters_per_day} chapter{'s' if chapters_per_day > 1 else ''} per day"
 
         link = SubElement(channel, 'link')
         link.text = request.host_url if request else "http://localhost:5000"
@@ -258,7 +328,11 @@ class BibleRSSGenerator:
         # Generate items
         current_date = start_date
         for day in range(days_to_generate):
-            chapters = self.get_chapter_for_day(plan_type, start_date, chapters_per_day, current_date)
+            if plan_type == 'mixed':
+                chapters = self.get_mixed_plan_chapters(ot_per_day, nt_per_day, psalms_per_day,
+                                                      proverbs_per_day, start_date, current_date)
+            else:
+                chapters = self.get_chapter_for_day(plan_type, start_date, chapters_per_day, current_date)
 
             if not chapters:
                 break
@@ -270,8 +344,19 @@ class BibleRSSGenerator:
             if len(chapters) == 1:
                 item_title.text = f"Day {day + 1}: {chapters[0][0]} {chapters[0][1]} ({current_date.strftime('%b %d')})"
             else:
-                chapter_list = ", ".join([f"{book} {ch}" for book, ch in chapters])
-                item_title.text = f"Day {day + 1}: {chapter_list} ({current_date.strftime('%b %d')})"
+                # Group by book type for cleaner titles
+                ot_chs = [f"{book} {ch}" for book, ch in chapters if book not in ['Psalms', 'Proverbs']]
+                nt_chs = [f"{book} {ch}" for book, ch in chapters if book in ['Matthew', 'Mark', 'Luke', 'John', 'Acts', 'Romans', '1 Corinthians', '2 Corinthians', 'Galatians', 'Ephesians', 'Philippians', 'Colossians', '1 Thessalonians', '2 Thessalonians', '1 Timothy', '2 Timothy', 'Titus', 'Philemon', 'Hebrews', 'James', '1 Peter', '2 Peter', '3 Peter', '1 John', '2 John', '3 John', 'Jude', 'Revelation']]
+                psalm_chs = [f"Ps {ch}" for book, ch in chapters if book == 'Psalms']
+                prov_chs = [f"Pr {ch}" for book, ch in chapters if book == 'Proverbs']
+
+                title_parts = []
+                if ot_chs: title_parts.extend(ot_chs)
+                if nt_chs: title_parts.extend(nt_chs)
+                if psalm_chs: title_parts.extend(psalm_chs)
+                if prov_chs: title_parts.extend(prov_chs)
+
+                item_title.text = f"Day {day + 1}: {', '.join(title_parts)} ({current_date.strftime('%b %d')})"
 
             # Description with full Bible text
             item_description = SubElement(item, 'description')
@@ -279,10 +364,11 @@ class BibleRSSGenerator:
 
             for book, chapter in chapters:
                 chapter_text = self.text_provider.get_chapter_text(book, chapter)
+                book_display = "Psalm" if book == "Psalms" else book
                 content_parts.append(f"""
 <div style="margin-bottom: 30px;">
     <h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px;">
-        📖 {book} Chapter {chapter}
+        {book_display} {chapter}
     </h2>
     <div style="line-height: 1.6; font-family: 'Georgia', serif; white-space: pre-wrap; margin: 15px 0;">
 {chapter_text}
@@ -290,18 +376,17 @@ class BibleRSSGenerator:
 </div>
                 """.strip())
 
-
             # Add reflection section
             content_parts.append(f"""
 <div style="background-color: #f8f9fa; padding: 15px; border-left: 4px solid #3498db; margin-top: 20px;">
-    <h3 style="color: #2c3e50; margin-top: 0;">📝 Reflection Questions</h3>
+    <h3 style="color: #2c3e50; margin-top: 0;">Reflection Questions</h3>
     <ul style="line-height: 1.6;">
         <li>What stands out to you in today's reading?</li>
         <li>How does this passage reveal God's character?</li>
         <li>What is one thing you can apply from this reading?</li>
-        <li>How does this connect to what you've read recently?</li>
+        <li>How do these passages connect with each other?</li>
     </ul>
-    <p style="margin-bottom: 0;"><strong>🙏 Prayer:</strong> "Lord, thank you for Your Word. Help me understand and apply what I've read today. Amen."</p>
+    <p style="margin-bottom: 0;">Prayer: "Lord, thank you for Your Word. Help me understand and apply what I've read today. Amen."</p>
 </div>
             """)
 
@@ -317,16 +402,19 @@ class BibleRSSGenerator:
                 passages = "%3B".join([f"{quote(book)}+{ch}" for book, ch in chapters])
                 item_link.text = f"https://www.biblegateway.com/passage/?search={passages}&version=ESV"
 
+
             # GUID
             item_guid = SubElement(item, 'guid')
-            item_guid.text = f"bible-{plan_type}-{current_date.strftime('%Y%m%d')}-{chapters_per_day}ch"
+            if plan_type == 'mixed':
+                item_guid.text = f"bible-mixed-{current_date.strftime('%Y%m%d')}-{ot_per_day}ot-{nt_per_day}nt-{psalms_per_day}ps-{proverbs_per_day}pr"
+            else:
+                item_guid.text = f"bible-{plan_type}-{current_date.strftime('%Y%m%d')}-{chapters_per_day}ch"
             item_guid.set('isPermaLink', 'false')
 
             # Publication date (6 AM on reading day)
             item_pub_date = SubElement(item, 'pubDate')
             pub_datetime = current_date.replace(hour=6, minute=0, second=0, microsecond=0)
             item_pub_date.text = pub_datetime.strftime('%a, %d %b %Y %H:%M:%S +0000')
-
 
             current_date += timedelta(days=1)
 
@@ -335,11 +423,11 @@ class BibleRSSGenerator:
         reparsed = minidom.parseString(rough_string)
         return reparsed.toprettyxml(indent="  ", encoding='utf-8').decode('utf-8')
 
-
 # Initialize generator
 generator = BibleRSSGenerator()
 
 # Web interface (same as before but with note about full text)
+
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html>
@@ -358,9 +446,9 @@ HTML_TEMPLATE = """
     </style>
 </head>
 <body>
-    <h1>📖 Bible RSS Feed Generator</h1>
+    <h1>Bible RSS Feed Generator</h1>
     <div class="feature-highlight">
-        <h3>✨ Full Bible Text Included!</h3>
+        <h3>Full Bible Text Included!</h3>
         <p>This generator includes the complete Bible text in your RSS feed, so you can read directly in your RSS reader without clicking external links.</p>
     </div>
 
@@ -393,36 +481,36 @@ HTML_TEMPLATE = """
         <button type="submit">Generate RSS Feed with Full Text</button>
     </form>
 
-    {% if feed_url %}
-    <div class="instructions">
-        <h3>✅ Your RSS Feed is Ready!</h3>
-        <p><strong>Feed URL:</strong></p>
-        <div class="feed-url">{{ feed_url }}</div>
-        <p><strong>What you get:</strong></p>
-        <ul>
-            <li>📖 Complete Bible text for each day's reading</li>
-            <li>📝 Reflection questions and prayer prompts</li>
-            <li>🔗 Links to online Bible for cross-referencing</li>
-            <li>📅 Daily delivery at 6 AM</li>
-        </ul>
-        <p><strong>Setup Instructions:</strong></p>
-        <ol>
-            <li>Copy the feed URL above</li>
-            <li>Add it to your RSS reader (Feedly, Inoreader, Apple News, etc.)</li>
-            <li>New readings appear daily with full text</li>
-        </ol>
-    </div>
-    {% endif %}
+{% if feed_url %}
+<div class="instructions">
+    <h3>Your RSS Feed is Ready!</h3>
+    <p><strong>Feed URL:</strong></p>
+    <div class="feed-url">{{ feed_url }}</div>
+    <p><strong>What you get:</strong></p>
+    <ul>
+        <li>Complete Bible text for each day's reading</li>
+        <li>Reflection questions and prayer prompts</li>
+        <li>Links to online Bible for cross-referencing</li>
+        <li>Daily delivery at 6 AM</li>
+    </ul>
+    <p><strong>Setup Instructions:</strong></p>
+    <ol>
+        <li>Copy the feed URL above</li>
+        <li>Add it to your RSS reader (Feedly, Inoreader, Apple News, etc.)</li>
+        <li>New readings appear daily with full text</li>
+    </ol>
+</div>
+{% endif %}
 
-    <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; color: #666; font-size: 14px;">
-        <p>📊 <strong>Reading Time Estimates:</strong></p>
-        <ul>
-            <li>New Testament: ~3 months (1 ch/day) or ~1 month (3 ch/day)</li>
-            <li>Old Testament: ~2.5 years (1 ch/day) or ~8 months (3 ch/day)</li>
-            <li>Full Bible: ~3 years (1 ch/day) or ~1 year (3 ch/day)</li>
-        </ul>
-        <p><small>⚡ <strong>Note:</strong> Text is fetched dynamically when you first access the feed, then cached for performance.</small></p>
-    </div>
+<div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; color: #666; font-size: 14px;">
+    <p>Reading Time Estimates:</p>
+    <ul>
+        <li>New Testament: ~3 months (1 ch/day) or ~1 month (3 ch/day)</li>
+        <li>Old Testament: ~2.5 years (1 ch/day) or ~8 months (3 ch/day)</li>
+        <li>Full Bible: ~3 years (1 ch/day) or ~1 year (3 ch/day)</li>
+    </ul>
+    <p><small>Note: Text is fetched dynamically when you first access the feed, then cached for performance.</small></p>
+</div>
 
 </body>
 </html>
@@ -437,23 +525,59 @@ def index():
 @app.route('/generate')
 def generate_feed():
     plan = request.args.get('plan', 'nt')
-    chapters = int(request.args.get('chapters', 1))
     start_date = request.args.get('start_date', datetime.now().strftime('%Y-%m-%d'))
 
+    if plan == 'mixed':
+        ot_chapters = int(request.args.get('ot_chapters', 1))
+        nt_chapters = int(request.args.get('nt_chapters', 1))
+        psalm_chapters = int(request.args.get('psalm_chapters', 1))
+        proverb_chapters = int(request.args.get('proverb_chapters', 1))
 
-    feed_url = f"{request.host_url}feed/{plan}/{start_date}/{chapters}/feed.rss"
-    return index() + f"<script>window.history.replaceState(null, null, '/?feed_url={feed_url}');</script>"
+        feed_url = f"{request.host_url}feed/mixed/{start_date}/{ot_chapters}-{nt_chapters}-{psalm_chapters}-{proverb_chapters}/feed.rss"
+    else:
+        chapters = int(request.args.get('chapters', 1))
+        feed_url = f"{request.host_url}feed/{plan}/{start_date}/{chapters}/feed.rss"
 
+    # Return the homepage with the feed URL displayed
+    today = datetime.now().strftime('%Y-%m-%d')
+    return render_template_string(HTML_TEMPLATE, today=today, feed_url=feed_url)
 
 @app.route('/feed/<plan>/<start_date>/<int:chapters>/feed.rss')
 def serve_feed(plan, start_date, chapters):
     try:
         print(f"Generating feed: {plan}, {start_date}, {chapters} chapters/day")
-        feed_content = generator.generate_rss_feed(plan, start_date, chapters)
+        feed_content = generator.generate_rss_feed(plan, start_date, chapters_per_day=chapters)
         return Response(feed_content, mimetype='application/rss+xml')
     except Exception as e:
         print(f"Error: {e}")
         return f"Error generating feed: {str(e)}", 400
+
+@app.route('/feed/mixed/<start_date>/<path:mixed_params>/feed.rss')
+def serve_mixed_feed(start_date, mixed_params):
+    try:
+        # Parse mixed parameters: ot-nt-psalms-proverbs
+        params = mixed_params.split('-')
+        if len(params) != 4:
+            return "Invalid mixed plan parameters", 400
+
+        ot_per_day = int(params[0])
+        nt_per_day = int(params[1])
+        psalms_per_day = int(params[2])
+        proverbs_per_day = int(params[3])
+
+        print(f"Generating mixed feed: {start_date}, OT:{ot_per_day}, NT:{nt_per_day}, Ps:{psalms_per_day}, Pr:{proverbs_per_day}")
+
+        feed_content = generator.generate_rss_feed(
+            'mixed', start_date,
+            ot_per_day=ot_per_day,
+            nt_per_day=nt_per_day,
+            psalms_per_day=psalms_per_day,
+            proverbs_per_day=proverbs_per_day
+        )
+        return Response(feed_content, mimetype='application/rss+xml')
+    except Exception as e:
+        print(f"Error: {e}")
+        return f"Error generating mixed feed: {str(e)}", 400
 
 def run_bible_rss_server():
     """
@@ -464,23 +588,23 @@ def run_bible_rss_server():
 
     Then run this function to start the server
     """
-    print("🚀 Starting Bible RSS Feed Generator with Full Text...")
+    print("Starting Bible RSS Feed Generator with Full Text...")
 
     try:
         from pyngrok import ngrok
         public_url = ngrok.connect(5000)
-        print(f"\n✅ Server running at: {public_url}")
-        print("📖 This RSS feed includes the complete Bible text!")
-        print("🔗 Open the URL above to create your feed")
+        print(f"\nServer running at: {public_url}")
+        print("This RSS feed includes the complete Bible text!")
+        print("Open the URL above to create your feed")
 
     except ImportError:
         print("Install pyngrok for public access: !pip install pyngrok")
-        print("🏠 Running locally at: http://localhost:5000")
+        print("Running locally at: http://localhost:5000")
     except Exception as e:
         print(f"Ngrok error: {e}")
-        print("🏠 Running locally at: http://localhost:5000")
+        print("Running locally at: http://localhost:5000")
 
-    print("\n📚 Features:")
+    print("\nFeatures:")
     print("• Full Bible text in each RSS item")
     print("• Multiple reading plans (OT, NT, Full Bible)")
     print("• Customizable chapters per day")
