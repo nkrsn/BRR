@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Bible RSS Feed Generator</title>
+</head>
+<body>
+    <h1>📖 Bible RSS Feed Generator</h1>
+    <form action="/generate" method="get">
+        <label for="plan">Plan:</label>
+        <select name="plan">
+            <option value="nt">New Testament</option>
+            <option value="ot">Old Testament</option>
+            <option value="full">Full Bible</option>
+            <option value="mixed">Mixed</option>
+        </select>
+        <label for="chapters">Chapters per day:</label>
+        <input type="number" name="chapters" value="1">
+        <label for="start_date">Start date:</label>
+        <input type="date" name="start_date" value="{{ today }}">
+        <button type="submit">Generate Feed</button>
+    </form>
+    {% if feed_url %}
+    <p><strong>Feed URL:</strong> <a href="{{ feed_url }}">{{ feed_url }}</a></p>
+    {% endif %}
+</body>
+</html>
