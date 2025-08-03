@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """
 Bible RSS Feed Generator with Full Text
-Includes actual Bible text in RSS feed using World English Bible (public domain)
+Enhanced version with persistent caching, better error handling, and Railway optimizations
 
 Install dependencies:
-!pip install flask pyngrok requests beautifulsoup4
+pip install flask flask-compress requests beautifulsoup4
 """
 
 from flask import Flask, Response, request, render_template_string
+from flask_compress import Compress
 import requests
 import json
 import threading
@@ -19,17 +20,89 @@ import re
 import time
 from bs4 import BeautifulSoup
 import os
+import pickle
+import signal
+import sys
 
 app = Flask(**name**)
+Compress(app)
+
+# Configuration
+
+class Config:
+CACHE_EXPIRY_DAYS = int(os.environ.get(‘CACHE_EXPIRY_DAYS’, 30))
+MAX_DAYS_TO_GENERATE = int(os.environ.get(‘MAX_DAYS_TO_GENERATE’, 30))
+DEFAULT_BIBLE_VERSION = os.environ.get(‘DEFAULT_BIBLE_VERSION’, ‘web’)
+CACHE_FILE = os.environ.get(‘CACHE_FILE’, ‘bible_cache.pkl’)
+PORT = int(os.environ.get(‘PORT’, 5000))
+
+class PersistentCache:
+def **init**(self, cache_file=‘bible_cache.pkl’, expiry_days=30):
+self.cache_file = cache_file
+self.expiry_delta = timedelta(days=expiry_days)
+self.cache = self._load_cache()
+self.unsaved_changes = False
+
+```
+def _load_cache(self):
+    if os.path.exists(self.cache_file):
+        try:
+            with open(self.cache_file, 'rb') as f:
+                cache = pickle.load(f)
+            # Clean expired entries
+            now = datetime.now()
+            cleaned = {k: v for k, v in cache.items() 
+                      if now - v['timestamp'] < self.expiry_delta}
+            print(f"Loaded cache with {len(cleaned)} valid entries")
+            return cleaned
+        except Exception as e:
+            print(f"Error loading cache: {e}")
+            return {}
+    return {}
+
+def get(self, key):
+    if key in self.cache:
+        entry = self.cache[key]
+        if datetime.now() - entry['timestamp'] < self.expiry_delta:
+            return entry['data']
+        else:
+            # Remove expired entry
+            del self.cache[key]
+            self.unsaved_changes = True
+    return None
+
+def set(self, key, value):
+    self.cache[key] = {
+        'data': value,
+        'timestamp': datetime.now()
+    }
+    self.unsaved_changes = True
+    # Save every 10 changes
+    if len(self.cache) % 10 == 0:
+        self._save_cache()
+
+def _save_cache(self):
+    try:
+        with open(self.cache_file, 'wb') as f:
+            pickle.dump(self.cache, f)
+        self.unsaved_changes = False
+        print(f"Saved cache with {len(self.cache)} entries")
+    except Exception as e:
+        print(f"Error saving cache: {e}")
+
+def force_save(self):
+    if self.unsaved_changes:
+        self._save_cache()
+```
 
 class BibleTextProvider:
 def **init**(self):
-self.cache = {}
+self.cache = PersistentCache(Config.CACHE_FILE, Config.CACHE_EXPIRY_DAYS)
 self.base_urls = {
 ‘web’: ‘https://ebible.org/web/’,  # World English Bible
 ‘asv’: ‘https://ebible.org/asv/’,  # American Standard Version
 }
-self.version = ‘web’  # Default to World English Bible (public domain)
+self.version = Config.DEFAULT_BIBLE_VERSION
 
 ```
 def get_book_filename(self, book_name):
@@ -75,127 +148,9 @@ def fetch_chapter_text_api(self, book, chapter):
                     verse_text = verse_data.get('text', '')
                     verses.append(f"{verse_num}. {verse_text}")
                 return "\n".join(verses)
-    except:
-        pass
-    return # Web interface (updated with mixed plan option)
-```
-
-HTML_TEMPLATE = """
-
-<!DOCTYPE html>
-
-<html>
-<head>
-    <title>Bible RSS Feed Generator with Full Text</title>
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-weight: 500; }
-        select, input { padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; width: 200px; }
-        .mixed-controls { display: none; background: #f8f9fa; padding: 15px; border-radius: 4px; margin: 10px 0; }
-        .mixed-group { display: flex; gap: 15px; flex-wrap: wrap; }
-        .mixed-item { display: flex; flex-direction: column; }
-        .mixed-item label { font-size: 13px; margin-bottom: 3px; }
-        .mixed-item select { width: 60px; font-size: 13px; }
-        button { background: #007cba; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
-        button:hover { background: #005a87; }
-        .feed-url { background: #f5f5f5; padding: 15px; border-radius: 4px; margin: 15px 0; font-family: monospace; word-break: break-all; }
-        .instructions { background: #e3f2fd; padding: 15px; border-radius: 4px; margin: 15px 0; }
-        .feature-highlight { background: #e8f5e8; padding: 15px; border-radius: 4px; margin: 15px 0; border-left: 4px solid #4caf50; }
-    </style>
-    <script>
-        function toggleMixedControls() {
-            const plan = document.getElementById('plan').value;
-            const mixedControls = document.getElementById('mixed-controls');
-            const regularControls = document.getElementById('regular-controls');
-
-```
-        if (plan === 'mixed') {
-            mixedControls.style.display = 'block';
-            regularControls.style.display = 'none';
-        } else {
-            mixedControls.style.display = 'none';
-            regularControls.style.display = 'block';
-        }
-    }
-</script>
-```
-
-</head>
-<body>
-    <h1>📖 Bible RSS Feed Generator</h1>
-    <div class="feature-highlight">
-        <h3>✨ Full Bible Text Included!</h3>
-        <p>This generator includes the complete Bible text in your RSS feed, so you can read directly in your RSS reader without clicking external links.</p>
-    </div>
-
-```
-<form action="/generate" method="get">
-    <div class="form-group">
-        <label for="plan">Reading Plan:</label>
-        <select name="plan" id="plan" onchange="toggleMixedControls()">
-            <option value="nt">New Testament Only (~260 chapters)</option>
-            <option value="ot">Old Testament Only (~929 chapters)</option>
-            <option value="full">Complete Bible (~1,189 chapters)</option>
-            <option value="mixed">🌟 Mixed Plan (OT + NT + Psalms + Proverbs)</option>
-        </select>
-    </div>
-    
-    <div class="form-group" id="regular-controls">
-        <label for="chapters">Chapters per Day:</label>
-        <select name="chapters" id="chapters">
-            <option value="1">1 Chapter (~3-4 minutes)</option>
-            <option value="2">2 Chapters (~6-8 minutes)</option>
-            <option value="3">3 Chapters (~9-12 minutes)</option>
-            <option value="4">4 Chapters (~12-16 minutes)</option>
-            <option value="5">5 Chapters (~15-20 minutes)</option>
-        </select>
-    </div>
-    
-    <div id="mixed-controls" class="mixed-controls">
-        <h4>📚 Customize Your Mixed Reading Plan</h4>
-        <p style="margin-bottom: 15px; font-size: 14px; color: #666;">
-            Select how many chapters from each section you want to read daily. Psalms and Proverbs will cycle through automatically.
-        </p>
-        <div class="mixed-group">
-            <div class="mixed-item">
-                <label for="ot_chapters">Old Testament</label>
-                <select name="ot_chapters" id="ot_chapters">
-                    <option value="0">0</option>
-                    <option value="1" selected>1</option>
-                    <option value="2">2</option>
-                    <option value="3">3</option>
-                </select>
-            </div>
-            <div class="mixed-item">
-                <label for="nt_chapters">New Testament</label>
-                <select name="nt_chapters" id="nt_chapters">
-                    <option value="0">0</option>
-                    <option value="1" selected>1</option>
-                    <option value="2">2</option>
-                    <option value="3">3</option>
-                </select>
-            </div>
-            <div class="mixed-item">
-                <label for="psalm_chapters">Psalms</label>
-                <select name="psalm_chapters" id="psalm_chapters">
-                    <option value="0">0</option>
-                    <option value="1" selected>1</option>
-                    <option value="2">2</option>
-                    <option value="3">3</option>
-                </select>
-            </div>
-            <div class="mixed-item">
-                <label for="proverb_chapters">Proverbs</label>
-                <select name="proverb_chapters" id="proverb_chapters">
-                    <option value="0">0</option>
-                    <option value="1" selected>1</option>
-                    <option value="2">2</option>
-                </select>
-            </div>
-        </div>
-        <p style="margin-top: 10px; font-size: 13px; color: #666;">
-            💡 <strong>Tip:</strong
+    except Exception as e:
+        print(f"API fetch error for {book} {chapter}: {e}")
+    return None
 
 def fetch_chapter_text_web(self, book, chapter):
     """Fetch chapter text from web sources"""
@@ -234,7 +189,7 @@ def fetch_chapter_text_web(self, book, chapter):
                     if len(text) > 100:  # Reasonable chapter length
                         return text
     except Exception as e:
-        print(f"Error fetching from web: {e}")
+        print(f"Error fetching from web for {book} {chapter}: {e}")
     
     return None
 
@@ -269,8 +224,9 @@ def get_chapter_text(self, book, chapter):
     cache_key = f"{book}_{chapter}_{self.version}"
     
     # Check cache first
-    if cache_key in self.cache:
-        return self.cache[cache_key]
+    cached_text = self.cache.get(cache_key)
+    if cached_text:
+        return cached_text
     
     print(f"Fetching {book} {chapter}...")
     
@@ -286,7 +242,7 @@ def get_chapter_text(self, book, chapter):
         text = self.get_fallback_text(book, chapter)
     
     # Cache the result
-    self.cache[cache_key] = text
+    self.cache.set(cache_key, text)
     
     # Add a small delay to be respectful to servers
     time.sleep(0.5)
@@ -405,89 +361,158 @@ def get_chapter_for_day(self, plan_type, start_date, chapters_per_day, target_da
     
     return chapters_today
 
-def generate_rss_feed(self, plan_type, start_date_str, chapters_per_day=None, days_to_generate=30, 
-                      ot_per_day=0, nt_per_day=0, psalms_per_day=0, proverbs_per_day=0):
-    start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
-    
+def _generate_error_feed(self, error_message):
+    """Generate a minimal valid RSS feed with error message"""
     rss = Element('rss')
     rss.set('version', '2.0')
-    rss.set('xmlns:atom', 'http://www.w3.org/2005/Atom')
-    rss.set('xmlns:content', 'http://purl.org/rss/1.0/modules/content/')
     
     channel = SubElement(rss, 'channel')
     
     title = SubElement(channel, 'title')
-    if plan_type == 'mixed':
-        parts = []
-        if ot_per_day > 0: parts.append(f"{ot_per_day} OT")
-        if nt_per_day > 0: parts.append(f"{nt_per_day} NT")
-        if psalms_per_day > 0: parts.append(f"{psalms_per_day} Ps")
-        if proverbs_per_day > 0: parts.append(f"{proverbs_per_day} Pr")
-        title.text = f"Daily Bible Reading - Mixed Plan ({', '.join(parts)})"
-    else:
-        title.text = f"Daily Bible Reading - {plan_type.upper()} ({chapters_per_day} ch/day)"
+    title.text = "Bible RSS Feed - Error"
     
     description = SubElement(channel, 'description')
-    if plan_type == 'mixed':
-        desc_parts = []
-        if ot_per_day > 0: desc_parts.append(f"{ot_per_day} Old Testament")
-        if nt_per_day > 0: desc_parts.append(f"{nt_per_day} New Testament")
-        if psalms_per_day > 0: desc_parts.append(f"{psalms_per_day} Psalm(s)")
-        if proverbs_per_day > 0: desc_parts.append(f"{proverbs_per_day} Proverb(s)")
-        description.text = f"Daily mixed Bible reading: {', '.join(desc_parts)} per day"
-    else:
-        description.text = f"Complete Bible text for daily reading - {chapters_per_day} chapter{'s' if chapters_per_day > 1 else ''} per day"
+    description.text = f"Error generating feed: {error_message}"
     
     link = SubElement(channel, 'link')
     link.text = request.host_url if request else "http://localhost:5000"
     
-    language = SubElement(channel, 'language')
-    language.text = "en-us"
+    item = SubElement(channel, 'item')
+    item_title = SubElement(item, 'title')
+    item_title.text = "Feed Generation Error"
     
-    last_build_date = SubElement(channel, 'lastBuildDate')
-    last_build_date.text = datetime.now().strftime('%a, %d %b %Y %H:%M:%S +0000')
+    item_description = SubElement(item, 'description')
+    item_description.text = f"An error occurred while generating your Bible reading feed: {error_message}"
     
-    # Generate items
-    current_date = start_date
-    for day in range(days_to_generate):
+    item_guid = SubElement(item, 'guid')
+    item_guid.text = f"error-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    
+    rough_string = tostring(rss, 'utf-8')
+    reparsed = minidom.parseString(rough_string)
+    return reparsed.toprettyxml(indent="  ", encoding='utf-8').decode('utf-8')
+
+def generate_rss_feed(self, plan_type, start_date_str, chapters_per_day=None, days_to_generate=None, 
+                      ot_per_day=0, nt_per_day=0, psalms_per_day=0, proverbs_per_day=0):
+    if days_to_generate is None:
+        days_to_generate = Config.MAX_DAYS_TO_GENERATE
+        
+    try:
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+        
+        # Pre-fetch all chapters with error recovery
+        all_chapters_to_fetch = []
+        current_date = start_date
+        
+        for day in range(days_to_generate):
+            if plan_type == 'mixed':
+                chapters = self.get_mixed_plan_chapters(ot_per_day, nt_per_day, psalms_per_day, 
+                                                      proverbs_per_day, start_date, current_date)
+            else:
+                chapters = self.get_chapter_for_day(plan_type, start_date, chapters_per_day, current_date)
+            
+            if not chapters:
+                break
+                
+            all_chapters_to_fetch.append((current_date, chapters))
+            current_date += timedelta(days=1)
+        
+        # Pre-fetch with error recovery
+        fetched_data = {}
+        total_chapters = sum(len(chapters) for _, chapters in all_chapters_to_fetch)
+        fetched_count = 0
+        
+        print(f"Pre-fetching {total_chapters} chapters...")
+        
+        for date, chapters in all_chapters_to_fetch:
+            for book, chapter in chapters:
+                key = (book, chapter)
+                if key not in fetched_data:
+                    try:
+                        fetched_data[key] = self.text_provider.get_chapter_text(book, chapter)
+                        fetched_count += 1
+                        if fetched_count % 10 == 0:
+                            print(f"Fetched {fetched_count}/{total_chapters} chapters...")
+                    except Exception as e:
+                        print(f"Failed to fetch {book} {chapter}: {e}")
+                        fetched_data[key] = self.text_provider.get_fallback_text(book, chapter)
+        
+        # Save cache after fetching
+        self.text_provider.cache.force_save()
+        
+        # Generate RSS
+        rss = Element('rss')
+        rss.set('version', '2.0')
+        rss.set('xmlns:atom', 'http://www.w3.org/2005/Atom')
+        rss.set('xmlns:content', 'http://purl.org/rss/1.0/modules/content/')
+        
+        channel = SubElement(rss, 'channel')
+        
+        title = SubElement(channel, 'title')
         if plan_type == 'mixed':
-            chapters = self.get_mixed_plan_chapters(ot_per_day, nt_per_day, psalms_per_day, 
-                                                  proverbs_per_day, start_date, current_date)
+            parts = []
+            if ot_per_day > 0: parts.append(f"{ot_per_day} OT")
+            if nt_per_day > 0: parts.append(f"{nt_per_day} NT")
+            if psalms_per_day > 0: parts.append(f"{psalms_per_day} Ps")
+            if proverbs_per_day > 0: parts.append(f"{proverbs_per_day} Pr")
+            title.text = f"Daily Bible Reading - Mixed Plan ({', '.join(parts)})"
         else:
-            chapters = self.get_chapter_for_day(plan_type, start_date, chapters_per_day, current_date)
+            title.text = f"Daily Bible Reading - {plan_type.upper()} ({chapters_per_day} ch/day)"
         
-        if not chapters:
-            break
-            
-        item = SubElement(channel, 'item')
-        
-        # Title
-        item_title = SubElement(item, 'title')
-        if len(chapters) == 1:
-            item_title.text = f"Day {day + 1}: {chapters[0][0]} {chapters[0][1]} ({current_date.strftime('%b %d')})"
+        description = SubElement(channel, 'description')
+        if plan_type == 'mixed':
+            desc_parts = []
+            if ot_per_day > 0: desc_parts.append(f"{ot_per_day} Old Testament")
+            if nt_per_day > 0: desc_parts.append(f"{nt_per_day} New Testament")
+            if psalms_per_day > 0: desc_parts.append(f"{psalms_per_day} Psalm(s)")
+            if proverbs_per_day > 0: desc_parts.append(f"{proverbs_per_day} Proverb(s)")
+            description.text = f"Daily mixed Bible reading: {', '.join(desc_parts)} per day"
         else:
-            # Group by book type for cleaner titles
-            ot_chs = [f"{book} {ch}" for book, ch in chapters if book not in ['Psalms', 'Proverbs']]
-            nt_chs = [f"{book} {ch}" for book, ch in chapters if book in ['Matthew', 'Mark', 'Luke', 'John', 'Acts', 'Romans', '1 Corinthians', '2 Corinthians', 'Galatians', 'Ephesians', 'Philippians', 'Colossians', '1 Thessalonians', '2 Thessalonians', '1 Timothy', '2 Timothy', 'Titus', 'Philemon', 'Hebrews', 'James', '1 Peter', '2 Peter', '1 John', '2 John', '3 John', 'Jude', 'Revelation']]
-            psalm_chs = [f"Ps {ch}" for book, ch in chapters if book == 'Psalms']
-            prov_chs = [f"Pr {ch}" for book, ch in chapters if book == 'Proverbs']
-            
-            title_parts = []
-            if ot_chs: title_parts.extend(ot_chs)
-            if nt_chs: title_parts.extend(nt_chs)
-            if psalm_chs: title_parts.extend(psalm_chs)
-            if prov_chs: title_parts.extend(prov_chs)
-            
-            item_title.text = f"Day {day + 1}: {', '.join(title_parts)} ({current_date.strftime('%b %d')})"
+            description.text = f"Complete Bible text for daily reading - {chapters_per_day} chapter{'s' if chapters_per_day > 1 else ''} per day"
         
-        # Description with full Bible text
-        item_description = SubElement(item, 'description')
-        content_parts = []
+        link = SubElement(channel, 'link')
+        link.text = request.host_url if request else "http://localhost:5000"
         
-        for book, chapter in chapters:
-            chapter_text = self.text_provider.get_chapter_text(book, chapter)
-            book_display = "Psalm" if book == "Psalms" else book
-            content_parts.append(f"""
+        language = SubElement(channel, 'language')
+        language.text = "en-us"
+        
+        last_build_date = SubElement(channel, 'lastBuildDate')
+        last_build_date.text = datetime.now().strftime('%a, %d %b %Y %H:%M:%S +0000')
+        
+        # Generate items using pre-fetched data
+        current_date = start_date
+        for day, (date, chapters) in enumerate(all_chapters_to_fetch):
+            item = SubElement(channel, 'item')
+            
+            # Title
+            item_title = SubElement(item, 'title')
+            if len(chapters) == 1:
+                item_title.text = f"Day {day + 1}: {chapters[0][0]} {chapters[0][1]} ({date.strftime('%b %d')})"
+            else:
+                # Group by book type for cleaner titles
+                nt_books = ['Matthew', 'Mark', 'Luke', 'John', 'Acts', 'Romans', '1 Corinthians', '2 Corinthians', 
+                           'Galatians', 'Ephesians', 'Philippians', 'Colossians', '1 Thessalonians', '2 Thessalonians', 
+                           '1 Timothy', '2 Timothy', 'Titus', 'Philemon', 'Hebrews', 'James', '1 Peter', '2 Peter', 
+                           '1 John', '2 John', '3 John', 'Jude', 'Revelation']
+                
+                title_parts = []
+                for book, ch in chapters:
+                    if book == 'Psalms':
+                        title_parts.append(f"Ps {ch}")
+                    elif book == 'Proverbs':
+                        title_parts.append(f"Pr {ch}")
+                    else:
+                        title_parts.append(f"{book} {ch}")
+                
+                item_title.text = f"Day {day + 1}: {', '.join(title_parts)} ({date.strftime('%b %d')})"
+            
+            # Description with full Bible text
+            item_description = SubElement(item, 'description')
+            content_parts = []
+            
+            for book, chapter in chapters:
+                chapter_text = fetched_data.get((book, chapter), self.text_provider.get_fallback_text(book, chapter))
+                book_display = "Psalm" if book == "Psalms" else book
+                content_parts.append(f"""
 ```
 
 <div style="margin-bottom: 30px;">
@@ -498,11 +523,11 @@ def generate_rss_feed(self, plan_type, start_date_str, chapters_per_day=None, da
 {chapter_text}
     </div>
 </div>
-                """.strip())
+                    """.strip())
 
 ```
-        # Add reflection section
-        content_parts.append(f"""
+            # Add reflection section
+            content_parts.append(f"""
 ```
 
 <div style="background-color: #f8f9fa; padding: 15px; border-left: 4px solid #3498db; margin-top: 20px;">
@@ -515,47 +540,49 @@ def generate_rss_feed(self, plan_type, start_date_str, chapters_per_day=None, da
     </ul>
     <p style="margin-bottom: 0;"><strong>🙏 Prayer:</strong> "Lord, thank you for Your Word. Help me understand and apply what I've read today. Amen."</p>
 </div>
-            """)
+                """)
 
 ```
-        full_content = ''.join(content_parts)
-        item_description.text = f"<![CDATA[{full_content}]]>"
+            full_content = ''.join(content_parts)
+            item_description.text = f"<![CDATA[{full_content}]]>"
+            
+            # Link to online Bible
+            item_link = SubElement(item, 'link')
+            if len(chapters) == 1:
+                book, ch = chapters[0]
+                item_link.text = f"https://www.biblegateway.com/passage/?search={quote(book)}+{ch}&version=ESV"
+            else:
+                passages = "%3B".join([f"{quote(book)}+{ch}" for book, ch in chapters])
+                item_link.text = f"https://www.biblegateway.com/passage/?search={passages}&version=ESV"
+            
+            # GUID
+            item_guid = SubElement(item, 'guid')
+            if plan_type == 'mixed':
+                item_guid.text = f"bible-mixed-{date.strftime('%Y%m%d')}-{ot_per_day}ot-{nt_per_day}nt-{psalms_per_day}ps-{proverbs_per_day}pr"
+            else:
+                item_guid.text = f"bible-{plan_type}-{date.strftime('%Y%m%d')}-{chapters_per_day}ch"
+            item_guid.set('isPermaLink', 'false')
+            
+            # Publication date (6 AM on reading day)
+            item_pub_date = SubElement(item, 'pubDate')
+            pub_datetime = date.replace(hour=6, minute=0, second=0, microsecond=0)
+            item_pub_date.text = pub_datetime.strftime('%a, %d %b %Y %H:%M:%S +0000')
         
-        # Link to online Bible
-        item_link = SubElement(item, 'link')
-        if len(chapters) == 1:
-            book, ch = chapters[0]
-            item_link.text = f"https://www.biblegateway.com/passage/?search={quote(book)}+{ch}&version=ESV"
-        else:
-            passages = "%3B".join([f"{quote(book)}+{ch}" for book, ch in chapters])
-            item_link.text = f"https://www.biblegateway.com/passage/?search={passages}&version=ESV"
+        # Convert to pretty XML
+        rough_string = tostring(rss, 'utf-8')
+        reparsed = minidom.parseString(rough_string)
+        return reparsed.toprettyxml(indent="  ", encoding='utf-8').decode('utf-8')
         
-        # GUID
-        item_guid = SubElement(item, 'guid')
-        if plan_type == 'mixed':
-            item_guid.text = f"bible-mixed-{current_date.strftime('%Y%m%d')}-{ot_per_day}ot-{nt_per_day}nt-{psalms_per_day}ps-{proverbs_per_day}pr"
-        else:
-            item_guid.text = f"bible-{plan_type}-{current_date.strftime('%Y%m%d')}-{chapters_per_day}ch"
-        item_guid.set('isPermaLink', 'false')
-        
-        # Publication date (6 AM on reading day)
-        item_pub_date = SubElement(item, 'pubDate')
-        pub_datetime = current_date.replace(hour=6, minute=0, second=0, microsecond=0)
-        item_pub_date.text = pub_datetime.strftime('%a, %d %b %Y %H:%M:%S +0000')
-        
-        current_date += timedelta(days=1)
-    
-    # Convert to pretty XML
-    rough_string = tostring(rss, 'utf-8')
-    reparsed = minidom.parseString(rough_string)
-    return reparsed.toprettyxml(indent="  ", encoding='utf-8').decode('utf-8')
+    except Exception as e:
+        print(f"Feed generation error: {e}")
+        return self._generate_error_feed(str(e))
 ```
 
 # Initialize generator
 
 generator = BibleRSSGenerator()
 
-# Web interface (same as before but with note about full text)
+# HTML Template with mixed plan improvements
 
 HTML_TEMPLATE = """
 
@@ -569,14 +596,72 @@ HTML_TEMPLATE = """
         .form-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 5px; font-weight: 500; }
         select, input { padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; width: 200px; }
+        .mixed-controls { display: none; background: #f8f9fa; padding: 15px; border-radius: 4px; margin: 10px 0; }
+        .mixed-group { display: flex; gap: 15px; flex-wrap: wrap; }
+        .mixed-item { display: flex; flex-direction: column; }
+        .mixed-item label { font-size: 13px; margin-bottom: 3px; }
+        .mixed-item select { width: 60px; font-size: 13px; }
+        #mixed-summary { margin-top: 10px; padding: 10px; background: #e3f2fd; border-radius: 4px; font-weight: 500; }
         button { background: #007cba; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
         button:hover { background: #005a87; }
         .feed-url { background: #f5f5f5; padding: 15px; border-radius: 4px; margin: 15px 0; font-family: monospace; word-break: break-all; }
         .instructions { background: #e3f2fd; padding: 15px; border-radius: 4px; margin: 15px 0; }
         .feature-highlight { background: #e8f5e8; padding: 15px; border-radius: 4px; margin: 15px 0; border-left: 4px solid #4caf50; }
+        .health-status { position: absolute; top: 10px; right: 10px; padding: 5px 10px; background: #4caf50; color: white; border-radius: 4px; font-size: 12px; }
     </style>
+    <script>
+        function toggleMixedControls() {
+            const plan = document.getElementById('plan').value;
+            const mixedControls = document.getElementById('mixed-controls');
+            const regularControls = document.getElementById('regular-controls');
+
+```
+        if (plan === 'mixed') {
+            mixedControls.style.display = 'block';
+            regularControls.style.display = 'none';
+            updateMixedPlanSummary();
+        } else {
+            mixedControls.style.display = 'none';
+            regularControls.style.display = 'block';
+        }
+    }
+    
+    function updateMixedPlanSummary() {
+        const ot = parseInt(document.getElementById('ot_chapters').value) || 0;
+        const nt = parseInt(document.getElementById('nt_chapters').value) || 0;
+        const ps = parseInt(document.getElementById('psalm_chapters').value) || 0;
+        const pr = parseInt(document.getElementById('proverb_chapters').value) || 0;
+        
+        const total = ot + nt + ps + pr;
+        const minTime = total * 3;
+        const maxTime = total * 6;
+        
+        document.getElementById('mixed-summary').innerHTML = 
+            `📊 Total: ${total} chapters/day (~${minTime}-${maxTime} minutes)`;
+    }
+    
+    // Check health status
+    async function checkHealth() {
+        try {
+            const response = await fetch('/health');
+            if (response.ok) {
+                document.getElementById('health-status').textContent = '✓ System Healthy';
+            }
+        } catch (e) {
+            document.getElementById('health-status').textContent = '⚠ System Check Failed';
+        }
+    }
+    
+    window.onload = function() {
+        checkHealth();
+        setInterval(checkHealth, 30000); // Check every 30 seconds
+    }
+</script>
+```
+
 </head>
 <body>
+    <div id="health-status" class="health-status">Checking...</div>
     <h1>📖 Bible RSS Feed Generator</h1>
     <div class="feature-highlight">
         <h3>✨ Full Bible Text Included!</h3>
@@ -595,7 +680,7 @@ HTML_TEMPLATE = """
         </select>
     </div>
     
-    <div class="form-group">
+    <div class="form-group" id="regular-controls">
         <label for="chapters">Chapters per Day:</label>
         <select name="chapters" id="chapters">
             <option value="1">1 Chapter (~3-4 minutes)</option>
@@ -604,6 +689,54 @@ HTML_TEMPLATE = """
             <option value="4">4 Chapters (~12-16 minutes)</option>
             <option value="5">5 Chapters (~15-20 minutes)</option>
         </select>
+    </div>
+    
+    <div id="mixed-controls" class="mixed-controls">
+        <h4>📚 Customize Your Mixed Reading Plan</h4>
+        <p style="margin-bottom: 15px; font-size: 14px; color: #666;">
+            Select how many chapters from each section you want to read daily. Psalms and Proverbs will cycle through automatically.
+        </p>
+        <div class="mixed-group">
+            <div class="mixed-item">
+                <label for="ot_chapters">Old Testament</label>
+                <select name="ot_chapters" id="ot_chapters" onchange="updateMixedPlanSummary()">
+                    <option value="0">0</option>
+                    <option value="1" selected>1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                </select>
+            </div>
+            <div class="mixed-item">
+                <label for="nt_chapters">New Testament</label>
+                <select name="nt_chapters" id="nt_chapters" onchange="updateMixedPlanSummary()">
+                    <option value="0">0</option>
+                    <option value="1" selected>1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                </select>
+            </div>
+            <div class="mixed-item">
+                <label for="psalm_chapters">Psalms</label>
+                <select name="psalm_chapters" id="psalm_chapters" onchange="updateMixedPlanSummary()">
+                    <option value="0">0</option>
+                    <option value="1" selected>1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                </select>
+            </div>
+            <div class="mixed-item">
+                <label for="proverb_chapters">Proverbs</label>
+                <select name="proverb_chapters" id="proverb_chapters" onchange="updateMixedPlanSummary()">
+                    <option value="0">0</option>
+                    <option value="1" selected>1</option>
+                    <option value="2">2</option>
+                </select>
+            </div>
+        </div>
+        <div id="mixed-summary">📊 Total: 4 chapters/day (~12-24 minutes)</div>
+        <p style="margin-top: 10px; font-size: 13px; color: #666;">
+            💡 <strong>Tip:</strong> A balanced plan might include 2 OT + 1 NT + 1 Psalm daily. Psalms and Proverbs cycle continuously.
+        </p>
     </div>
     
     <div class="form-group">
@@ -642,7 +775,7 @@ HTML_TEMPLATE = """
         <li>Old Testament: ~2.5 years (1 ch/day) or ~8 months (3 ch/day)</li>
         <li>Full Bible: ~3 years (1 ch/day) or ~1 year (3 ch/day)</li>
     </ul>
-    <p><small>⚡ <strong>Note:</strong> Text is fetched dynamically when you first access the feed, then cached for performance.</small></p>
+    <p><small>⚡ <strong>Note:</strong> Text is fetched dynamically when you first access the feed, then cached for performance. Cache persists across restarts.</small></p>
 </div>
 ```
 
@@ -655,6 +788,16 @@ def index():
 today = datetime.now().strftime(’%Y-%m-%d’)
 feed_url = request.args.get(‘feed_url’)
 return render_template_string(HTML_TEMPLATE, today=today, feed_url=feed_url)
+
+@app.route(’/health’)
+def health_check():
+"""Health check endpoint for Railway"""
+return {
+‘status’: ‘healthy’,
+‘timestamp’: datetime.now().isoformat(),
+‘cache_entries’: len(generator.text_provider.cache.cache),
+‘version’: ‘1.0.0’
+}, 200
 
 @app.route(’/generate’)
 def generate_feed():
@@ -683,7 +826,9 @@ def serve_feed(plan, start_date, chapters):
 try:
 print(f"Generating feed: {plan}, {start_date}, {chapters} chapters/day")
 feed_content = generator.generate_rss_feed(plan, start_date, chapters_per_day=chapters)
-return Response(feed_content, mimetype=‘application/rss+xml’)
+response = Response(feed_content, mimetype=‘application/rss+xml’)
+response.headers[‘Cache-Control’] = ‘public, max-age=3600’  # Cache for 1 hour
+return response
 except Exception as e:
 print(f"Error: {e}")
 return f"Error generating feed: {str(e)}", 400
@@ -711,47 +856,60 @@ return "Invalid mixed plan parameters", 400
         psalms_per_day=psalms_per_day, 
         proverbs_per_day=proverbs_per_day
     )
-    return Response(feed_content, mimetype='application/rss+xml')
+    response = Response(feed_content, mimetype='application/rss+xml')
+    response.headers['Cache-Control'] = 'public, max-age=3600'  # Cache for 1 hour
+    return response
 except Exception as e:
     print(f"Error: {e}")
     return f"Error generating mixed feed: {str(e)}", 400
 ```
 
+# Add caching headers
+
+@app.after_request
+def add_cache_headers(response):
+if response.mimetype == ‘application/rss+xml’:
+response.headers[‘Cache-Control’] = ‘public, max-age=3600’
+return response
+
+# Graceful shutdown handling
+
+def signal_handler(sig, frame):
+print(‘Shutting down gracefully…’)
+# Save cache before shutdown
+generator.text_provider.cache.force_save()
+sys.exit(0)
+
+signal.signal(signal.SIGINT, signal_handler)
+signal.signal(signal.SIGTERM, signal_handler)
+
 def run_bible_rss_server():
 """
-Run the Bible RSS server with full text in Google Colab
+Run the Bible RSS server with full text
 
 ```
-Usage:
-!pip install flask pyngrok requests beautifulsoup4
-
-Then run this function to start the server
+For Railway deployment, this will use the PORT environment variable
 """
 print("🚀 Starting Bible RSS Feed Generator with Full Text...")
+print(f"📁 Using cache file: {Config.CACHE_FILE}")
+print(f"⏰ Cache expiry: {Config.CACHE_EXPIRY_DAYS} days")
+print(f"📖 Default Bible version: {Config.DEFAULT_BIBLE_VERSION}")
 
-try:
-    from pyngrok import ngrok
-    public_url = ngrok.connect(5000)
-    print(f"\n✅ Server running at: {public_url}")
-    print("📖 This RSS feed includes the complete Bible text!")
-    print("🔗 Open the URL above to create your feed")
-    
-except ImportError:
-    print("Install pyngrok for public access: !pip install pyngrok")
-    print("🏠 Running locally at: http://localhost:5000")
-except Exception as e:
-    print(f"Ngrok error: {e}")
-    print("🏠 Running locally at: http://localhost:5000")
+# Load existing cache stats
+if hasattr(generator.text_provider.cache, 'cache'):
+    print(f"📊 Loaded {len(generator.text_provider.cache.cache)} cached chapters")
 
 print("\n📚 Features:")
 print("• Full Bible text in each RSS item")
 print("• Multiple reading plans (OT, NT, Full Bible)")
-print("• Customizable chapters per day")
-print("• Reflection questions included")
-print("• Works with any RSS reader")
+print("• Mixed plan with customizable OT/NT/Psalms/Proverbs")
+print("• Persistent caching across restarts")
+print("• Health check endpoint at /health")
+print("• Graceful shutdown with cache saving")
 
-# Start the server (Railway needs to use PORT env var)
-port = int(os.environ.get('PORT', 5000))
+# Start the server
+port = Config.PORT
+print(f"\n🌐 Starting server on port {port}")
 app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
 ```
 
