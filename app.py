@@ -153,7 +153,7 @@ class BibleTextProvider:
         """Fetch chapter text from web sources"""
         try:
             # Try Bible Gateway
-            bg_url = f"https://www.biblegateway.com/passage/?search={quote(book)}+{chapter}&version=WEB&interface=print"
+            bg_url = f"https://www.biblegateway.com/passage/?search={quote(book)}+{chapter}&version=NIV&interface=print"
             headers = {'User-Agent': 'Mozilla/5.0 (compatible; BibleRSSReader/1.0)'}
             response = requests.get(bg_url, headers=headers, timeout=15)
 
