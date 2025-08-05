@@ -30,14 +30,14 @@ Compress(app)
 # Configuration
 
 class Config:
-CACHE_EXPIRY_DAYS = int(os.environ.get(‘CACHE_EXPIRY_DAYS’, 30))
-MAX_DAYS_TO_GENERATE = int(os.environ.get(‘MAX_DAYS_TO_GENERATE’, 5))
-DEFAULT_BIBLE_VERSION = os.environ.get(‘DEFAULT_BIBLE_VERSION’, ‘web’)
-CACHE_FILE = os.environ.get(‘CACHE_FILE’, ‘bible_cache.pkl’)
-PORT = int(os.environ.get(‘PORT’, 5000))
+CACHE_EXPIRY_DAYS = int(os.environ.get('CACHE_EXPIRY_DAYS', 30))
+MAX_DAYS_TO_GENERATE = int(os.environ.get('MAX_DAYS_TO_GENERATE', 5))
+DEFAULT_BIBLE_VERSION = os.environ.get('DEFAULT_BIBLE_VERSION', 'web')
+CACHE_FILE = os.environ.get('CACHE_FILE', 'bible_cache.pkl')
+PORT = int(os.environ.get('PORT', 5000))
 
 class PersistentCache:
-def **init**(self, cache_file=‘bible_cache.pkl’, expiry_days=30):
+def **init**(self, cache_file='bible_cache.pkl', expiry_days=30):
 self.cache_file = cache_file
 self.expiry_delta = timedelta(days=expiry_days)
 self.cache = self._load_cache()
@@ -99,8 +99,8 @@ class BibleTextProvider:
 def **init**(self):
 self.cache = PersistentCache(Config.CACHE_FILE, Config.CACHE_EXPIRY_DAYS)
 self.base_urls = {
-‘web’: ‘https://ebible.org/web/’,  # World English Bible
-‘asv’: ‘https://ebible.org/asv/’,  # American Standard Version
+'web': 'https://ebible.org/web/',  # World English Bible
+'asv': 'https://ebible.org/asv/',  # American Standard Version
 }
 self.version = Config.DEFAULT_BIBLE_VERSION
 
@@ -207,7 +207,7 @@ def get_fallback_text(self, book, chapter):
 • YouVersion: https://www.bible.com/search/bible?q={quote(book)}%20{chapter}
 • Blue Letter Bible: https://www.blueletterbible.org/search/search.cfm?Criteria={quote(book)}+{chapter}
 
-Today’s Reading: {book} {chapter}
+Today's Reading: {book} {chapter}
 
 💡 Reading Tips:
 • Read slowly and thoughtfully
@@ -254,28 +254,28 @@ class BibleRSSGenerator:
 def **init**(self):
 self.text_provider = BibleTextProvider()
 self.bible_books = {
-‘ot’: [
-(‘Genesis’, 50), (‘Exodus’, 40), (‘Leviticus’, 27), (‘Numbers’, 36),
-(‘Deuteronomy’, 34), (‘Joshua’, 24), (‘Judges’, 21), (‘Ruth’, 4),
-(‘1 Samuel’, 31), (‘2 Samuel’, 24), (‘1 Kings’, 22), (‘2 Kings’, 25),
-(‘1 Chronicles’, 29), (‘2 Chronicles’, 36), (‘Ezra’, 10), (‘Nehemiah’, 13),
-(‘Esther’, 10), (‘Job’, 42), (‘Ecclesiastes’, 12), (‘Song of Solomon’, 8),
-(‘Isaiah’, 66), (‘Jeremiah’, 52), (‘Lamentations’, 5), (‘Ezekiel’, 48),
-(‘Daniel’, 12), (‘Hosea’, 14), (‘Joel’, 3), (‘Amos’, 9), (‘Obadiah’, 1),
-(‘Jonah’, 4), (‘Micah’, 7), (‘Nahum’, 3), (‘Habakkuk’, 3), (‘Zephaniah’, 3),
-(‘Haggai’, 2), (‘Zechariah’, 14), (‘Malachi’, 4)
+'ot': [
+('Genesis', 50), ('Exodus', 40), ('Leviticus', 27), ('Numbers', 36),
+('Deuteronomy', 34), ('Joshua', 24), ('Judges', 21), ('Ruth', 4),
+('1 Samuel', 31), ('2 Samuel', 24), ('1 Kings', 22), ('2 Kings', 25),
+('1 Chronicles', 29), ('2 Chronicles', 36), ('Ezra', 10), ('Nehemiah', 13),
+('Esther', 10), ('Job', 42), ('Ecclesiastes', 12), ('Song of Solomon', 8),
+('Isaiah', 66), ('Jeremiah', 52), ('Lamentations', 5), ('Ezekiel', 48),
+('Daniel', 12), ('Hosea', 14), ('Joel', 3), ('Amos', 9), ('Obadiah', 1),
+('Jonah', 4), ('Micah', 7), ('Nahum', 3), ('Habakkuk', 3), ('Zephaniah', 3),
+('Haggai', 2), ('Zechariah', 14), ('Malachi', 4)
 ],
-‘nt’: [
-(‘Matthew’, 28), (‘Mark’, 16), (‘Luke’, 24), (‘John’, 21),
-(‘Acts’, 28), (‘Romans’, 16), (‘1 Corinthians’, 16), (‘2 Corinthians’, 13),
-(‘Galatians’, 6), (‘Ephesians’, 6), (‘Philippians’, 4), (‘Colossians’, 4),
-(‘1 Thessalonians’, 5), (‘2 Thessalonians’, 3), (‘1 Timothy’, 6),
-(‘2 Timothy’, 4), (‘Titus’, 3), (‘Philemon’, 1), (‘Hebrews’, 13),
-(‘James’, 5), (‘1 Peter’, 5), (‘2 Peter’, 3), (‘1 John’, 5),
-(‘2 John’, 1), (‘3 John’, 1), (‘Jude’, 1), (‘Revelation’, 22)
+'nt': [
+('Matthew', 28), ('Mark', 16), ('Luke', 24), ('John', 21),
+('Acts', 28), ('Romans', 16), ('1 Corinthians', 16), ('2 Corinthians', 13),
+('Galatians', 6), ('Ephesians', 6), ('Philippians', 4), ('Colossians', 4),
+('1 Thessalonians', 5), ('2 Thessalonians', 3), ('1 Timothy', 6),
+('2 Timothy', 4), ('Titus', 3), ('Philemon', 1), ('Hebrews', 13),
+('James', 5), ('1 Peter', 5), ('2 Peter', 3), ('1 John', 5),
+('2 John', 1), ('3 John', 1), ('Jude', 1), ('Revelation', 22)
 ],
-‘psalms’: [(‘Psalms’, 150)],
-‘proverbs’: [(‘Proverbs’, 31)]
+'psalms': [('Psalms', 150)],
+'proverbs': [('Proverbs', 31)]
 }
 
 ```
@@ -808,26 +808,26 @@ HTML_TEMPLATE = """
 </html>
 """
 
-@app.route(’/’)
+@app.route('/')
 def index():
-today = datetime.now().strftime(’%Y-%m-%d’)
-feed_url = request.args.get(‘feed_url’)
+today = datetime.now().strftime('%Y-%m-%d')
+feed_url = request.args.get('feed_url')
 return render_template_string(HTML_TEMPLATE, today=today, feed_url=feed_url)
 
-@app.route(’/health’)
+@app.route('/health')
 def health_check():
 """Health check endpoint for Railway"""
 return {
-‘status’: ‘healthy’,
-‘timestamp’: datetime.now().isoformat(),
-‘cache_entries’: len(generator.text_provider.cache.cache),
-‘version’: ‘1.0.0’
+'status': 'healthy',
+'timestamp': datetime.now().isoformat(),
+'cache_entries': len(generator.text_provider.cache.cache),
+'version': '1.0.0'
 }, 200
 
-@app.route(’/generate’)
+@app.route('/generate')
 def generate_feed():
-plan = request.args.get(‘plan’, ‘nt’)
-start_date = request.args.get(‘start_date’, datetime.now().strftime(’%Y-%m-%d’))
+plan = request.args.get('plan', 'nt')
+start_date = request.args.get('start_date', datetime.now().strftime('%Y-%m-%d'))
 
 ```
 if plan == 'mixed':
@@ -846,14 +846,14 @@ today = datetime.now().strftime('%Y-%m-%d')
 return render_template_string(HTML_TEMPLATE, today=today, feed_url=feed_url)
 ```
 
-@app.route(’/feed/<plan>/<start_date>/<int:chapters>/feed.rss’)
+@app.route('/feed/<plan>/<start_date>/<int:chapters>/feed.rss')
 def serve_feed(plan, start_date, chapters):
 try:
 print(f"Generating feed: {plan}, start_date={start_date}, {chapters} chapters/day")
-print(f"Current date: {datetime.now().strftime(’%Y-%m-%d’)}")
+print(f"Current date: {datetime.now().strftime('%Y-%m-%d')}")
 feed_content = generator.generate_rss_feed(plan, start_date, chapters_per_day=chapters)
-response = Response(feed_content, mimetype=‘application/rss+xml’)
-response.headers[‘Cache-Control’] = ‘public, max-age=3600’  # Cache for 1 hour
+response = Response(feed_content, mimetype='application/rss+xml')
+response.headers['Cache-Control'] = 'public, max-age=3600'  # Cache for 1 hour
 return response
 except Exception as e:
 print(f"Error: {e}")
@@ -861,11 +861,11 @@ import traceback
 traceback.print_exc()
 return f"Error generating feed: {str(e)}", 400
 
-@app.route(’/feed/mixed/<start_date>/<path:mixed_params>/feed.rss’)
+@app.route('/feed/mixed/<start_date>/<path:mixed_params>/feed.rss')
 def serve_mixed_feed(start_date, mixed_params):
 try:
 # Parse mixed parameters: ot-nt-psalms-proverbs
-params = mixed_params.split(’-’)
+params = mixed_params.split('-')
 if len(params) != 4:
 return "Invalid mixed plan parameters", 400
 
@@ -899,14 +899,14 @@ except Exception as e:
 
 @app.after_request
 def add_cache_headers(response):
-if response.mimetype == ‘application/rss+xml’:
-response.headers[‘Cache-Control’] = ‘public, max-age=3600’
+if response.mimetype == 'application/rss+xml':
+response.headers['Cache-Control'] = 'public, max-age=3600'
 return response
 
 # Graceful shutdown handling
 
 def signal_handler(sig, frame):
-print(‘Shutting down gracefully…’)
+print('Shutting down gracefully…')
 # Save cache before shutdown
 generator.text_provider.cache.force_save()
 sys.exit(0)
