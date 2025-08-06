@@ -24,7 +24,7 @@ import pickle
 import signal
 import sys
 
-app = Flask(**name**)
+app = Flask(__name__)
 Compress(app)
 
 # Configuration
@@ -37,7 +37,7 @@ CACHE_FILE = os.environ.get('CACHE_FILE', 'bible_cache.pkl')
 PORT = int(os.environ.get('PORT', 5000))
 
 class PersistentCache:
-def **init**(self, cache_file='bible_cache.pkl', expiry_days=30):
+def __init__(self, cache_file='bible_cache.pkl', expiry_days=30):
 self.cache_file = cache_file
 self.expiry_delta = timedelta(days=expiry_days)
 self.cache = self._load_cache()
@@ -96,7 +96,7 @@ def force_save(self):
 ```
 
 class BibleTextProvider:
-def **init**(self):
+def __init__(self):
 self.cache = PersistentCache(Config.CACHE_FILE, Config.CACHE_EXPIRY_DAYS)
 self.base_urls = {
 'web': 'https://ebible.org/web/',  # World English Bible
@@ -251,7 +251,7 @@ def get_chapter_text(self, book, chapter):
 ```
 
 class BibleRSSGenerator:
-def **init**(self):
+def __init__(self):
 self.text_provider = BibleTextProvider()
 self.bible_books = {
 'ot': [
@@ -944,5 +944,5 @@ print(f"\n🌐 Starting server on port {port}")
 app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
 ```
 
-if **name** == "**main**":
+if __name__ == "__main__":
 run_bible_rss_server()
