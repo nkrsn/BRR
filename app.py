@@ -382,17 +382,111 @@ class BibleRSSGenerator:
         reparsed = minidom.parseString(rough_string)
         return reparsed.toprettyxml(indent="  ", encoding='utf-8').decode('utf-8')
 
+    def generate_simple_rss_feed(self, plan_type, start_date_str, chapters_per_day=None):
+        """Generate a simple RSS feed without fetching Bible text"""
+        try:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+            today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            
+            # Calculate date range
+            days_elapsed_since_start = (today - start_date).days
+            
+            if days_elapsed_since_start < 0:
+                feed_start_date = start_date
+                initial_day_number = 0
+            else:
+                days_to_show_before = 7
+                feed_start_date = today - timedelta(days=days_to_show_before)
+                if feed_start_date < start_date:
+                    feed_start_date = start_date
+                initial_day_number = (feed_start_date - start_date).days
+            
+            end_date = today + timedelta(days=14)
+            
+            # Generate RSS structure
+            rss = Element('rss')
+            rss.set('version', '2.0')
+            
+            channel = SubElement(rss, 'channel')
+            
+            title = SubElement(channel, 'title')
+            title.text = f"Daily Bible Reading - {plan_type.upper()} ({chapters_per_day} ch/day)"
+            
+            description = SubElement(channel, 'description')
+            description.text = f"Simple Bible reading plan - {chapters_per_day} chapter{'s' if chapters_per_day > 1 else ''} per day"
+            
+            link = SubElement(channel, 'link')
+            link.text = request.host_url if request else "http://localhost:5000"
+            
+            # Generate items
+            current_date = feed_start_date
+            current_day_number = initial_day_number
+            
+            while current_date <= end_date:
+                chapters = self.get_chapter_for_day(plan_type, start_date, chapters_per_day, current_date)
+                
+                if not chapters:
+                    break
+                
+                item = SubElement(channel, 'item')
+                
+                # Title
+                item_title = SubElement(item, 'title')
+                chapters_text = ", ".join([f"{book} {ch}" for book, ch in chapters])
+                item_title.text = f"Day {current_day_number + 1}: {chapters_text} ({current_date.strftime('%b %d')})"
+                
+                # Simple description
+                item_description = SubElement(item, 'description')
+                desc_text = f"Today's reading: {chapters_text}\n\nClick the link to read online."
+                item_description.text = desc_text
+                
+                # Link
+                item_link = SubElement(item, 'link')
+                if len(chapters) == 1:
+                    book, ch = chapters[0]
+                    item_link.text = f"https://www.biblegateway.com/passage/?search={quote(book)}+{ch}&version=ESV"
+                else:
+                    passages = "%3B".join([f"{quote(book)}+{ch}" for book, ch in chapters])
+                    item_link.text = f"https://www.biblegateway.com/passage/?search={passages}&version=ESV"
+                
+                # GUID
+                item_guid = SubElement(item, 'guid')
+                item_guid.text = f"bible-{plan_type}-{current_date.strftime('%Y%m%d')}-{chapters_per_day}ch"
+                item_guid.set('isPermaLink', 'false')
+                
+                # Publication date
+                item_pub_date = SubElement(item, 'pubDate')
+                pub_datetime = current_date.replace(hour=6, minute=0, second=0, microsecond=0)
+                item_pub_date.text = pub_datetime.strftime('%a, %d %b %Y %H:%M:%S GMT')
+                
+                current_date += timedelta(days=1)
+                current_day_number += 1
+            
+            # Convert to pretty XML
+            rough_string = tostring(rss, 'utf-8')
+            reparsed = minidom.parseString(rough_string)
+            return reparsed.toprettyxml(indent="  ", encoding='utf-8').decode('utf-8')
+            
+        except Exception as e:
+            print(f"Simple feed generation error: {e}")
+            return self._generate_error_feed(str(e))
+
     def generate_rss_feed(self, plan_type, start_date_str, chapters_per_day=None, days_to_generate=None, 
                           ot_per_day=0, nt_per_day=0, psalms_per_day=0, proverbs_per_day=0):
         if days_to_generate is None:
             days_to_generate = Config.MAX_DAYS_TO_GENERATE
             
+        import time
+        generation_start = time.time()
+        
         try:
             start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
             today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
             
             # Calculate how many days have passed since start date
             days_elapsed_since_start = (today - start_date).days
+            
+            print(f"Feed generation started - Start date: {start_date_str}, Today: {today.strftime('%Y-%m-%d')}, Days elapsed: {days_elapsed_since_start}")
             
             # Determine the date range for feed generation
             if days_elapsed_since_start < 0:
@@ -414,6 +508,8 @@ class BibleRSSGenerator:
             # Generate up to 14 days in the future from today
             end_date = today + timedelta(days=14)
             
+            print(f"Feed will cover: {feed_start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
+            
             # Pre-fetch all chapters with error recovery
             all_chapters_to_fetch = []
             current_date = feed_start_date
@@ -432,6 +528,8 @@ class BibleRSSGenerator:
                 all_chapters_to_fetch.append((current_date, chapters, current_day_number))
                 current_date += timedelta(days=1)
                 current_day_number += 1
+            
+            print(f"Will generate {len(all_chapters_to_fetch)} days of readings")
             
             # Pre-fetch with error recovery
             fetched_data = {}
@@ -798,6 +896,75 @@ def health_check():
         'version': '1.0.0'
     }, 200
 
+@app.route('/debug/feed/<plan>/<start_date>')
+def debug_feed(plan, start_date):
+    """Debug endpoint to see what dates would be generated"""
+    try:
+        start = datetime.strptime(start_date, '%Y-%m-%d')
+        today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        days_elapsed = (today - start).days
+        
+        # Calculate what the feed would show
+        if days_elapsed < 0:
+            feed_start = start
+            feed_end = start + timedelta(days=30)
+            start_day = 1
+            end_day = 30
+        else:
+            days_to_show_before = 7
+            feed_start = today - timedelta(days=days_to_show_before)
+            if feed_start < start:
+                feed_start = start
+            feed_end = today + timedelta(days=14)
+            start_day = (feed_start - start).days + 1
+            end_day = (feed_end - start).days + 1
+        
+        return {
+            'start_date': start_date,
+            'today': today.strftime('%Y-%m-%d'),
+            'days_elapsed': days_elapsed,
+            'current_day_number': days_elapsed + 1 if days_elapsed >= 0 else 0,
+            'feed_date_range': f"{feed_start.strftime('%Y-%m-%d')} to {feed_end.strftime('%Y-%m-%d')}",
+            'feed_day_range': f"Days {start_day} to {end_day}",
+            'total_entries': (feed_end - feed_start).days + 1
+        }
+    except Exception as e:
+        return {'error': str(e)}, 400
+
+@app.route('/debug/test-feed/<plan>/<start_date>/<int:chapters>')
+def test_feed_generation(plan, start_date, chapters):
+    """Test feed generation with timing info"""
+    import time
+    
+    try:
+        start_time = time.time()
+        
+        # Try to generate just 3 days to test
+        print(f"TEST: Generating minimal feed for debugging...")
+        
+        # Test with minimal days
+        feed_content = generator.generate_rss_feed(
+            plan, start_date, 
+            chapters_per_day=chapters,
+            days_to_generate=3  # Only generate 3 days for testing
+        )
+        
+        end_time = time.time()
+        
+        return {
+            'success': True,
+            'generation_time': f"{end_time - start_time:.2f} seconds",
+            'feed_size': f"{len(feed_content)} bytes",
+            'feed_size_kb': f"{len(feed_content) / 1024:.2f} KB"
+        }
+    except Exception as e:
+        import traceback
+        return {
+            'success': False,
+            'error': str(e),
+            'traceback': traceback.format_exc()
+        }, 500
+
 @app.route('/generate')
 def generate_feed():
     plan = request.args.get('plan', 'nt')
@@ -823,7 +990,17 @@ def serve_feed(plan, start_date, chapters):
     try:
         print(f"Generating feed: {plan}, start_date={start_date}, {chapters} chapters/day")
         print(f"Current date: {datetime.now().strftime('%Y-%m-%d')}")
-        feed_content = generator.generate_rss_feed(plan, start_date, chapters_per_day=chapters)
+        
+        # Check if we should use simple mode (no prefetching)
+        simple_mode = request.args.get('simple', 'false').lower() == 'true'
+        
+        if simple_mode:
+            print("Using simple mode (no text fetching)")
+            # Generate a simple feed without fetching text
+            feed_content = generator.generate_simple_rss_feed(plan, start_date, chapters_per_day=chapters)
+        else:
+            feed_content = generator.generate_rss_feed(plan, start_date, chapters_per_day=chapters)
+            
         response = Response(feed_content, mimetype='application/rss+xml')
         response.headers['Cache-Control'] = 'public, max-age=3600'  # Cache for 1 hour
         return response
