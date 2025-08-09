@@ -30,7 +30,7 @@ Compress(app)
 # Configuration
 class Config:
     CACHE_EXPIRY_DAYS = int(os.environ.get('CACHE_EXPIRY_DAYS', 30))
-    MAX_DAYS_TO_GENERATE = int(os.environ.get('MAX_DAYS_TO_GENERATE', 30))
+    MAX_DAYS_TO_GENERATE = int(os.environ.get('MAX_DAYS_TO_GENERATE', 5))
     DEFAULT_BIBLE_VERSION = os.environ.get('DEFAULT_BIBLE_VERSION', 'web')
     CACHE_FILE = os.environ.get('CACHE_FILE', 'bible_cache.pkl')
     PORT = int(os.environ.get('PORT', 5000))
@@ -496,7 +496,7 @@ class BibleRSSGenerator:
             else:
                 # Start date is in the past, show recent entries
                 # Show last 7 days of entries plus next 7 days
-                days_to_show_before = 7
+                days_to_show_before = 3
                 feed_start_date = today - timedelta(days=days_to_show_before)
                 
                 # Make sure we don't go before the original start date
@@ -506,7 +506,7 @@ class BibleRSSGenerator:
                 initial_day_number = (feed_start_date - start_date).days
             
             # Generate up to 14 days in the future from today
-            end_date = today + timedelta(days=14)
+            end_date = today + timedelta(days=3)
             
             print(f"Feed will cover: {feed_start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
             
