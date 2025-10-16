@@ -124,34 +124,10 @@ class BibleTextProvider:
         }
         return book_mapping.get(book_name, book_name.upper()[:3])
 
-    def fetch_chapter_text_api(self, book, chapter):
-        """Fetch chapter text using Bible API"""
-        try:
-            # Try Bible API first
-            api_url = "https://labs.bible.org/api/"
-            params = {
-                'passage': f"{book} {chapter}",
-                'type': 'json',
-                'formatting': 'plain'
-            }
-            response = requests.get(api_url, params=params, timeout=10)
-            if response.status_code == 200:
-                data = response.json()
-                if data:
-                    verses = []
-                    for verse_data in data:
-                        verse_num = verse_data.get('verse', '')
-                        verse_text = verse_data.get('text', '')
-                        verses.append(f"{verse_num}. {verse_text}")
-                    return "\n".join(verses)
-        except Exception as e:
-            print(f"API fetch error for {book} {chapter}: {e}")
-        return None
-
     def fetch_chapter_text_web(self, book, chapter):
-        """Fetch chapter text from web sources"""
+        """Fetch chapter text from web sources (primary method)"""
         try:
-            # Try Bible Gateway
+            # Try Bible Gateway first - most reliable
             bg_url = f"https://www.biblegateway.com/passage/?search={quote(book)}+{chapter}&version=WEB&interface=print"
             headers = {'User-Agent': 'Mozilla/5.0 (compatible; BibleRSSReader/1.0)'}
             response = requests.get(bg_url, headers=headers, timeout=15)
@@ -185,7 +161,66 @@ class BibleTextProvider:
                         if len(text) > 100:  # Reasonable chapter length
                             return text
         except Exception as e:
-            print(f"Error fetching from web for {book} {chapter}: {e}")
+            print(f"Error fetching from Bible Gateway for {book} {chapter}: {e}")
+        
+        return None
+
+    def fetch_chapter_text_api(self, book, chapter):
+        """Fetch chapter text using Bible API (fallback method)"""
+        try:
+            # Try labs.bible.org API as fallback
+            # This returns NET Bible translation
+            api_url = "https://labs.bible.org/api/"
+            
+            # Use type=json to get JSON response (not HTML which is default)
+            params = {
+                'passage': f"{book} {chapter}",
+                'type': 'json',  # Critical: without this, returns HTML
+                'formatting': 'plain'
+            }
+            
+            response = requests.get(api_url, params=params, timeout=10)
+            
+            if response.status_code == 200:
+                # Check content type - API should return application/json
+                content_type = response.headers.get('Content-Type', '')
+                
+                # Try to parse as JSON regardless of content-type header
+                # (some servers misconfigure headers)
+                try:
+                    data = response.json()
+                    
+                    # API returns array of verse objects
+                    if data and isinstance(data, list) and len(data) > 0:
+                        verses = []
+                        for verse_data in data:
+                            # API returns: {bookname, chapter, verse, text}
+                            verse_num = verse_data.get('verse', '')
+                            verse_text = verse_data.get('text', '').strip()
+                            
+                            if verse_text:
+                                # Format with verse numbers for readability
+                                verses.append(f"{verse_num}. {verse_text}")
+                        
+                        if verses:
+                            result = "\n".join(verses)
+                            print(f"Successfully fetched {book} {chapter} from API ({len(verses)} verses)")
+                            return result
+                    else:
+                        print(f"API returned empty or invalid data structure for {book} {chapter}")
+                        
+                except json.JSONDecodeError as e:
+                    # If JSON parsing fails, the API might have returned HTML
+                    print(f"API returned invalid JSON for {book} {chapter}: {e}")
+                    print(f"Content-Type was: {content_type}")
+                    print(f"First 200 chars: {response.text[:200]}")
+                    
+        except requests.exceptions.Timeout:
+            print(f"API timeout for {book} {chapter}")
+        except requests.exceptions.RequestException as e:
+            print(f"API request error for {book} {chapter}: {e}")
+        except Exception as e:
+            print(f"Unexpected API error for {book} {chapter}: {e}")
         
         return None
 
@@ -223,12 +258,12 @@ Today's Reading: {book} {chapter}
         
         print(f"Fetching {book} {chapter}...")
         
-        # Try API first
-        text = self.fetch_chapter_text_api(book, chapter)
+        # Try web scraping first (most reliable)
+        text = self.fetch_chapter_text_web(book, chapter)
         
-        # If API fails, try web scraping
+        # If web scraping fails, try API
         if not text:
-            text = self.fetch_chapter_text_web(book, chapter)
+            text = self.fetch_chapter_text_api(book, chapter)
         
         # If all else fails, use fallback
         if not text:
@@ -285,12 +320,12 @@ class BibleRSSGenerator:
             raise ValueError("Plan type must be 'ot', 'nt', 'full', 'psalms', or 'proverbs'")
 
     def get_mixed_plan_chapters(self, ot_per_day, nt_per_day, psalms_per_day, proverbs_per_day, start_date, target_date):
-        """Get chapters for mixed reading plan (OT + NT + Psalms + Proverbs)"""
+        """Get chapters for mixed reading plan (OT + NT + Psalms + Proverbs) - all sections cycle infinitely"""
         days_elapsed = (target_date - start_date).days
         
         chapters_today = []
         
-        # Old Testament chapters
+        # Old Testament chapters - NOW CYCLES INFINITELY
         if ot_per_day > 0:
             ot_plan = self.bible_books['ot']
             ot_chapters = []
@@ -300,11 +335,10 @@ class BibleRSSGenerator:
             
             ot_start = days_elapsed * ot_per_day
             for i in range(ot_per_day):
-                chapter_idx = ot_start + i
-                if chapter_idx < len(ot_chapters):
-                    chapters_today.append(ot_chapters[chapter_idx])
+                chapter_idx = (ot_start + i) % len(ot_chapters)  # Modulo makes it cycle
+                chapters_today.append(ot_chapters[chapter_idx])
         
-        # New Testament chapters
+        # New Testament chapters - NOW CYCLES INFINITELY
         if nt_per_day > 0:
             nt_plan = self.bible_books['nt']
             nt_chapters = []
@@ -314,9 +348,8 @@ class BibleRSSGenerator:
             
             nt_start = days_elapsed * nt_per_day
             for i in range(nt_per_day):
-                chapter_idx = nt_start + i
-                if chapter_idx < len(nt_chapters):
-                    chapters_today.append(nt_chapters[chapter_idx])
+                chapter_idx = (nt_start + i) % len(nt_chapters)  # Modulo makes it cycle
+                chapters_today.append(nt_chapters[chapter_idx])
         
         # Psalms (cycle through)
         if psalms_per_day > 0:
@@ -580,7 +613,7 @@ class BibleRSSGenerator:
                 if nt_per_day > 0: desc_parts.append(f"{nt_per_day} New Testament")
                 if psalms_per_day > 0: desc_parts.append(f"{psalms_per_day} Psalm(s)")
                 if proverbs_per_day > 0: desc_parts.append(f"{proverbs_per_day} Proverb(s)")
-                description.text = f"Daily mixed Bible reading: {', '.join(desc_parts)} per day"
+                description.text = f"Daily mixed Bible reading: {', '.join(desc_parts)} per day - all sections cycle infinitely"
             else:
                 description.text = f"Complete Bible text for daily reading - {chapters_per_day} chapter{'s' if chapters_per_day > 1 else ''} per day"
             
@@ -775,7 +808,7 @@ HTML_TEMPLATE = """
                 <option value="nt">New Testament Only (~260 chapters)</option>
                 <option value="ot">Old Testament Only (~929 chapters)</option>
                 <option value="full">Complete Bible (~1,189 chapters)</option>
-                <option value="mixed">🌟 Mixed Plan (OT + NT + Psalms + Proverbs)</option>
+                <option value="mixed">🌟 Mixed Plan (OT + NT + Psalms + Proverbs) - All Cycle!</option>
             </select>
         </div>
         
@@ -793,7 +826,7 @@ HTML_TEMPLATE = """
         <div id="mixed-controls" class="mixed-controls">
             <h4>📚 Customize Your Mixed Reading Plan</h4>
             <p style="margin-bottom: 15px; font-size: 14px; color: #666;">
-                Select how many chapters from each section you want to read daily. Psalms and Proverbs will cycle through automatically.
+                Select how many chapters from each section you want to read daily. <strong>All sections cycle infinitely!</strong> When NT finishes, it starts over while OT continues, creating ever-changing daily mixes.
             </p>
             <div class="mixed-group">
                 <div class="mixed-item">
@@ -834,7 +867,7 @@ HTML_TEMPLATE = """
             </div>
             <div id="mixed-summary">📊 Total: 4 chapters/day (~12-24 minutes)</div>
             <p style="margin-top: 10px; font-size: 13px; color: #666;">
-                💡 <strong>Tip:</strong> A balanced plan might include 2 OT + 1 NT + 1 Psalm daily. Psalms and Proverbs cycle continuously.
+                💡 <strong>Tip:</strong> A balanced plan might include 2 OT + 1 NT + 1 Psalm daily. All sections cycle infinitely - when one finishes, it starts over automatically!
             </p>
         </div>
         
@@ -854,6 +887,7 @@ HTML_TEMPLATE = """
         <p><strong>What you get:</strong></p>
         <ul>
             <li>📖 Complete Bible text for each day's reading</li>
+            <li>♾️ All sections cycle infinitely (mixed plans never end!)</li>
             <li>📝 Reflection questions and prayer prompts</li>
             <li>🔗 Links to online Bible for cross-referencing</li>
             <li>📅 Daily delivery at 6 AM</li>
@@ -873,8 +907,9 @@ HTML_TEMPLATE = """
             <li>New Testament: ~3 months (1 ch/day) or ~1 month (3 ch/day)</li>
             <li>Old Testament: ~2.5 years (1 ch/day) or ~8 months (3 ch/day)</li>
             <li>Full Bible: ~3 years (1 ch/day) or ~1 year (3 ch/day)</li>
+            <li>Mixed Plans: Cycle infinitely! Each section restarts when complete.</li>
         </ul>
-        <p><small>⚡ <strong>Note:</strong> Text is fetched dynamically when you first access the feed, then cached for performance. Cache persists across restarts.</small></p>
+        <p><small>⚡ <strong>Note:</strong> Text is fetched from Bible Gateway (most reliable source), then cached for performance. Cache persists across restarts.</small></p>
     </div>
 </body>
 </html>
@@ -893,7 +928,7 @@ def health_check():
         'status': 'healthy',
         'timestamp': datetime.now().isoformat(),
         'cache_entries': len(generator.text_provider.cache.cache),
-        'version': '1.0.0'
+        'version': '1.1.0'
     }, 200
 
 @app.route('/debug/feed/<plan>/<start_date>')
@@ -1078,6 +1113,7 @@ def run_bible_rss_server():
     print("• Full Bible text in each RSS item")
     print("• Multiple reading plans (OT, NT, Full Bible)")
     print("• Mixed plan with customizable OT/NT/Psalms/Proverbs")
+    print("• All sections cycle infinitely in mixed plans!")
     print("• Persistent caching across restarts")
     print("• Health check endpoint at /health")
     print("• Graceful shutdown with cache saving")
