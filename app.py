@@ -31,7 +31,7 @@ Compress(app)
 class Config:
     CACHE_EXPIRY_DAYS = int(os.environ.get('CACHE_EXPIRY_DAYS', 30))
     MAX_DAYS_TO_GENERATE = int(os.environ.get('MAX_DAYS_TO_GENERATE', 5))
-    DEFAULT_BIBLE_VERSION = os.environ.get('DEFAULT_BIBLE_VERSION', 'web')
+    DEFAULT_BIBLE_VERSION = os.environ.get('DEFAULT_BIBLE_VERSION', 'niv')
     CACHE_FILE = os.environ.get('CACHE_FILE', 'bible_cache.pkl')
     PORT = int(os.environ.get('PORT', 5000))
 
@@ -128,7 +128,7 @@ class BibleTextProvider:
         """Fetch chapter text from web sources (primary method)"""
         try:
             # Try Bible Gateway first - most reliable
-            bg_url = f"https://www.biblegateway.com/passage/?search={quote(book)}+{chapter}&version=WEB&interface=print"
+            bg_url = f"https://www.biblegateway.com/passage/?search={quote(book)}+{chapter}&version=NIV&interface=print"
             headers = {'User-Agent': 'Mozilla/5.0 (compatible; BibleRSSReader/1.0)'}
             response = requests.get(bg_url, headers=headers, timeout=15)
             
@@ -232,7 +232,7 @@ class BibleTextProvider:
 [Bible text temporarily unavailable - please read from your preferred Bible]
 
 📖 Read online at:
-• Bible Gateway: https://www.biblegateway.com/passage/?search={quote(book)}+{chapter}&version=ESV
+• Bible Gateway: https://www.biblegateway.com/passage/?search={quote(book)}+{chapter}&version=NIV
 • YouVersion: https://www.bible.com/search/bible?q={quote(book)}%20{chapter}
 • Blue Letter Bible: https://www.blueletterbible.org/search/search.cfm?Criteria={quote(book)}+{chapter}
 
@@ -278,6 +278,35 @@ Today's Reading: {book} {chapter}
         return text
 
 class BibleRSSGenerator:
+    BLB_BOOK_ABBR = {
+        'Genesis': 'gen', 'Exodus': 'exo', 'Leviticus': 'lev', 'Numbers': 'num',
+        'Deuteronomy': 'deu', 'Joshua': 'jos', 'Judges': 'jdg', 'Ruth': 'rut',
+        '1 Samuel': '1sa', '2 Samuel': '2sa', '1 Kings': '1ki', '2 Kings': '2ki',
+        '1 Chronicles': '1ch', '2 Chronicles': '2ch', 'Ezra': 'ezr', 'Nehemiah': 'neh',
+        'Esther': 'est', 'Job': 'job', 'Psalms': 'psa', 'Proverbs': 'pro',
+        'Ecclesiastes': 'ecc', 'Song of Solomon': 'sng', 'Isaiah': 'isa',
+        'Jeremiah': 'jer', 'Lamentations': 'lam', 'Ezekiel': 'eze', 'Daniel': 'dan',
+        'Hosea': 'hos', 'Joel': 'joe', 'Amos': 'amo', 'Obadiah': 'oba', 'Jonah': 'jon',
+        'Micah': 'mic', 'Nahum': 'nah', 'Habakkuk': 'hab', 'Zephaniah': 'zep',
+        'Haggai': 'hag', 'Zechariah': 'zec', 'Malachi': 'mal',
+        'Matthew': 'mat', 'Mark': 'mar', 'Luke': 'luk', 'John': 'jhn',
+        'Acts': 'act', 'Romans': 'rom', '1 Corinthians': '1co', '2 Corinthians': '2co',
+        'Galatians': 'gal', 'Ephesians': 'eph', 'Philippians': 'phi', 'Colossians': 'col',
+        '1 Thessalonians': '1th', '2 Thessalonians': '2th', '1 Timothy': '1ti',
+        '2 Timothy': '2ti', 'Titus': 'tit', 'Philemon': 'phm', 'Hebrews': 'heb',
+        'James': 'jas', '1 Peter': '1pe', '2 Peter': '2pe', '1 John': '1jo',
+        '2 John': '2jo', '3 John': '3jo', 'Jude': 'jde', 'Revelation': 'rev',
+    }
+
+    def _build_blb_url(self, chapters):
+        """Build a Blue Letter Bible NIV URL for one or more chapters."""
+        if len(chapters) == 1:
+            book, ch = chapters[0]
+            abbr = self.BLB_BOOK_ABBR.get(book, book.lower()[:3])
+            return f"https://www.blueletterbible.org/niv/{abbr}/{ch}/1/"
+        passages = "%3B".join([f"{quote(book)}+{ch}" for book, ch in chapters])
+        return f"https://www.blueletterbible.org/search/search.cfm?Criteria={passages}&t=NIV"
+
     def __init__(self):
         self.text_provider = BibleTextProvider()
         self.bible_books = {
@@ -475,12 +504,7 @@ class BibleRSSGenerator:
                 
                 # Link
                 item_link = SubElement(item, 'link')
-                if len(chapters) == 1:
-                    book, ch = chapters[0]
-                    item_link.text = f"https://www.biblegateway.com/passage/?search={quote(book)}+{ch}&version=ESV"
-                else:
-                    passages = "%3B".join([f"{quote(book)}+{ch}" for book, ch in chapters])
-                    item_link.text = f"https://www.biblegateway.com/passage/?search={passages}&version=ESV"
+                item_link.text = self._build_blb_url(chapters)
                 
                 # GUID
                 item_guid = SubElement(item, 'guid')
@@ -689,12 +713,7 @@ class BibleRSSGenerator:
                 
                 # Link to online Bible
                 item_link = SubElement(item, 'link')
-                if len(chapters) == 1:
-                    book, ch = chapters[0]
-                    item_link.text = f"https://www.biblegateway.com/passage/?search={quote(book)}+{ch}&version=ESV"
-                else:
-                    passages = "%3B".join([f"{quote(book)}+{ch}" for book, ch in chapters])
-                    item_link.text = f"https://www.biblegateway.com/passage/?search={passages}&version=ESV"
+                item_link.text = self._build_blb_url(chapters)
                 
                 # GUID
                 item_guid = SubElement(item, 'guid')

@@ -7,7 +7,7 @@
     "variables": {
       "CACHE_EXPIRY_DAYS": "30",
       "MAX_DAYS_TO_GENERATE": "30", 
-      "DEFAULT_BIBLE_VERSION": "web",
+      "DEFAULT_BIBLE_VERSION": "niv",
       "CACHE_FILE": "bible_cache.pkl"
     }
   }
