@@ -305,7 +305,7 @@ class BibleRSSGenerator:
             abbr = self.BLB_BOOK_ABBR.get(book, book.lower()[:3])
             return f"https://www.blueletterbible.org/niv/{abbr}/{ch}/1/"
         passages = "%3B".join([f"{quote(book)}+{ch}" for book, ch in chapters])
-        return f"https://www.blueletterbible.org/search/search.cfm?Criteria={passages}&t=NIV"
+        return f"https://www.biblegateway.com/passage/?search={passages}&version=NIV"
 
     def __init__(self):
         self.text_provider = BibleTextProvider()
