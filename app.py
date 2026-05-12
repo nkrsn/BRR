@@ -304,7 +304,18 @@ class BibleRSSGenerator:
             book, ch = chapters[0]
             abbr = self.BLB_BOOK_ABBR.get(book, book.lower()[:3])
             return f"https://www.blueletterbible.org/niv/{abbr}/{ch}/1/"
-        passages = "%3B".join([f"{quote(book)}+{ch}" for book, ch in chapters])
+        # Collapse consecutive chapters from the same book into ranges (e.g. Joshua 1-3)
+        groups = []
+        i = 0
+        while i < len(chapters):
+            book, start = chapters[i]
+            end = start
+            while i + 1 < len(chapters) and chapters[i + 1][0] == book and chapters[i + 1][1] == end + 1:
+                i += 1
+                end = chapters[i][1]
+            groups.append(f"{quote(book)}+{start}" if start == end else f"{quote(book)}+{start}-{end}")
+            i += 1
+        passages = "%3B".join(groups)
         return f"https://www.biblegateway.com/passage/?search={passages}&version=NIV"
 
     def __init__(self):
