@@ -564,7 +564,7 @@ class BibleRSSGenerator:
             else:
                 # Start date is in the past, show recent entries
                 # Show last 7 days of entries plus next 7 days
-                days_to_show_before = 3
+                days_to_show_before = 30
                 feed_start_date = today - timedelta(days=days_to_show_before)
                 
                 # Make sure we don't go before the original start date
@@ -574,7 +574,7 @@ class BibleRSSGenerator:
                 initial_day_number = (feed_start_date - start_date).days
             
             # Generate up to 14 days in the future from today
-            end_date = today + timedelta(days=3)
+            end_date = today + timedelta(days=2)
             
             print(f"Feed will cover: {feed_start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
             
